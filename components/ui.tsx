@@ -26,11 +26,11 @@ export function Check({ children, onDark = false }: { children: ReactNode; onDar
   return (
     <div className={onDark ? "tick on-dark" : "tick"}>
       <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-        <circle cx="11" cy="11" r="11" fill="#20c7c7" />
+        <circle cx="11" cy="11" r="11" fill="var(--teal)" />
         <path
           d="M6.5 11.3l3 3 6-6.3"
           fill="none"
-          stroke={onDark ? "#0b2f6b" : "#ffffff"}
+          stroke={onDark ? "var(--ink)" : "var(--on-ink)"}
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"

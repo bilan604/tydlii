@@ -153,7 +153,7 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
 
         <aside className="quote-panel">
           <svg className="panel-art" viewBox="0 0 400 400" preserveAspectRatio="none" aria-hidden="true">
-            <polygon points="300,0 400,0 400,400 200,400" fill="#20c7c7" opacity="0.22" />
+            <polygon points="300,0 400,0 400,400 200,400" fill="var(--teal)" opacity="0.22" />
           </svg>
           <div className="panel-copy">
             {quote.custom || !headline ? (

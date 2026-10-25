@@ -1,13 +1,25 @@
 :root {
-  --navy: #0b2f6b;
-  --teal: #20c7c7;
-  --blue: #3c8dff;
-  --white: #ffffff;
-  --paper: #f4f7fb;
-  --muted: #4d5e78;
-  --line: rgba(11, 47, 107, 0.14);
-  --danger: #9b1c1c;
-  --shadow: 0 30px 80px -30px rgba(11, 47, 107, 0.35), 0 8px 24px -12px rgba(11, 47, 107, 0.16);
+  /* Grok light theme tokens from useGrokTheme (Option A + smile). */
+  --ink: #070707;
+  --ink-hover: #2f2f2f;
+  --on-ink: #fcfcfc;
+  --teal: #00bca6;
+  --blue: #1084fe;
+  --bg: #fcfcfc;
+  --subtle: #f7f7f7;
+  --elevated: #fcfcfc;
+  --text: #141414;
+  --muted: #14141499;
+  --faint: #14141466;
+  --line: #1414140d;
+  --line-weak: #1414141a;
+  --line-strong: #1414144d;
+  --danger: #c21d2e;
+  --navy: var(--ink);
+  --white: var(--on-ink);
+  --paper: var(--subtle);
+  --shadow: 0 30px 80px -30px color-mix(in srgb, var(--text) 45%, transparent),
+    0 8px 24px -12px color-mix(in srgb, var(--text) 20%, transparent);
   --font: var(--font-outfit), "Avenir Next", "Segoe UI", sans-serif;
   color-scheme: light;
 }
@@ -24,8 +36,8 @@ html {
 
 body {
   margin: 0;
-  background: var(--white);
-  color: var(--navy);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font);
   font-size: 17px;
   line-height: 1.55;
@@ -132,11 +144,11 @@ main.shell {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 600;
-  color: #5c6d86;
+  color: var(--faint);
 }
 
 .eyebrow.on-dark {
-  color: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--on-ink) 72%, transparent);
 }
 
 .section-intro {
@@ -234,21 +246,21 @@ main.shell {
 }
 
 .btn-navy:hover {
-  background: #0e3b84;
+  background: var(--ink-hover);
 }
 
 .btn-ghost {
   color: var(--white);
-  border-color: rgba(255, 255, 255, 0.45);
+  border-color: color-mix(in srgb, var(--on-ink) 45%, transparent);
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--on-ink) 8%, transparent);
 }
 
 .btn-line {
-  color: var(--navy);
-  border-color: rgba(11, 47, 107, 0.28);
+  color: var(--text);
+  border-color: var(--line-strong);
   background: transparent;
 }
 
@@ -315,7 +327,7 @@ main.shell {
   font-weight: 500;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--on-ink) 12%, transparent);
 }
 
 .hero h1 {
@@ -329,7 +341,7 @@ main.shell {
   font-size: clamp(20px, 2.4vw, 26px);
   font-weight: 500;
   letter-spacing: -0.015em;
-  color: rgba(255, 255, 255, 0.78);
+  color: color-mix(in srgb, var(--on-ink) 78%, transparent);
   opacity: 1;
   transform: translateY(0);
   transition: opacity 360ms ease, transform 360ms ease;
@@ -342,7 +354,7 @@ main.shell {
 
 .lede {
   max-width: 480px;
-  color: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--on-ink) 72%, transparent);
   font-size: 18px;
 }
 
@@ -366,7 +378,7 @@ main.shell {
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.3);
+  background: color-mix(in srgb, var(--on-ink) 30%, transparent);
   transition: width 300ms ease, background 300ms ease;
 }
 
@@ -383,11 +395,11 @@ main.shell {
 .phone {
   width: 100%;
   max-width: 360px;
-  background: var(--white);
-  color: var(--navy);
+  background: var(--elevated);
+  color: var(--text);
   border-radius: 32px;
   padding: 18px;
-  box-shadow: 0 40px 90px -30px rgba(7, 30, 70, 0.55);
+  box-shadow: 0 40px 90px -30px color-mix(in srgb, var(--ink) 55%, transparent);
 }
 
 .map {
@@ -454,19 +466,19 @@ main.shell {
   font-weight: 600;
   padding: 5px 10px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--teal) 18%, white);
-  color: var(--navy);
+  background: color-mix(in srgb, var(--teal) 18%, var(--elevated));
+  color: var(--text);
 }
 
 .hairline,
 .rule {
   height: 1px;
   border: 0;
-  background: rgba(11, 47, 107, 0.1);
+  background: var(--line-weak);
 }
 
 .rule {
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--on-ink) 18%, transparent);
 }
 
 .avatar {
@@ -550,7 +562,7 @@ main.shell {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: #5c6d86;
+  color: var(--faint);
 }
 
 .accent-bar {
@@ -688,7 +700,7 @@ main.shell {
 .panel-copy > p,
 .earn-copy > p,
 .earn-figure p {
-  color: rgba(255, 255, 255, 0.75);
+  color: color-mix(in srgb, var(--on-ink) 75%, transparent);
   font-size: 15px;
 }
 
@@ -715,11 +727,11 @@ main.shell {
 
 .price-tax {
   font-size: 18px;
-  color: rgba(255, 255, 255, 0.75);
+  color: color-mix(in srgb, var(--on-ink) 75%, transparent);
 }
 
 .price-incl {
-  color: rgba(255, 255, 255, 0.7);
+  color: color-mix(in srgb, var(--on-ink) 70%, transparent);
   font-size: 15px;
 }
 
@@ -761,7 +773,7 @@ main.shell {
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--text);
 }
 
 .field input,
@@ -771,9 +783,9 @@ main.shell {
   min-height: 52px;
   padding: 0.75rem 0.95rem;
   border-radius: 14px;
-  border: 1px solid var(--line);
-  background: var(--white);
-  color: var(--navy);
+  border: 1px solid var(--line-weak);
+  background: var(--elevated);
+  color: var(--text);
   font-weight: 500;
 }
 
@@ -915,7 +927,7 @@ main.shell {
 
 .earn-figure p:first-child,
 .earn-figure p:last-child {
-  color: rgba(255, 255, 255, 0.86);
+  color: color-mix(in srgb, var(--on-ink) 86%, transparent);
 }
 
 .earn-amount {
@@ -943,7 +955,7 @@ main.shell {
   height: 12px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--on-ink) 15%, transparent);
 }
 
 .share-you {
@@ -957,7 +969,7 @@ main.shell {
 }
 
 .share-labels {
-  color: rgba(255, 255, 255, 0.75);
+  color: color-mix(in srgb, var(--on-ink) 75%, transparent);
   font-size: 13px;
 }
 
@@ -974,8 +986,8 @@ main.shell {
   gap: 16px;
   padding: clamp(40px, 6vw, 72px) 24px;
   border-radius: 32px;
-  background: color-mix(in srgb, var(--teal) 14%, white);
-  border: 1px solid color-mix(in srgb, var(--teal) 30%, white);
+  background: color-mix(in srgb, var(--teal) 14%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--teal) 30%, var(--bg));
 }
 
 .close-band h2 {
@@ -993,7 +1005,7 @@ main.shell {
 }
 
 .footer-row p {
-  color: #5c6d86;
+  color: var(--faint);
   font-size: 14px;
 }
 

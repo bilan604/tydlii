@@ -25,8 +25,8 @@ export function CleanerPitch() {
       <section className="block tight" aria-label="Cleaner earnings">
         <div className="earn">
           <svg className="earn-art" viewBox="0 0 1000 500" preserveAspectRatio="none" aria-hidden="true">
-            <polygon points="0,0 380,0 260,500 0,500" fill="#20c7c7" opacity="0.9" />
-            <polygon points="0,0 250,0 150,500 0,500" fill="#3c8dff" opacity="0.25" />
+            <polygon points="0,0 380,0 260,500 0,500" fill="var(--teal)" opacity="0.9" />
+            <polygon points="0,0 250,0 150,500 0,500" fill="var(--blue)" opacity="0.25" />
           </svg>
           <div className="earn-grid">
             <div className="earn-figure">
