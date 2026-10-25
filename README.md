@@ -136,5 +136,5 @@ Use Cloudflare for DNS. Render issues the certificate. Follow [Render’s Cloudf
 - `components/` — Option A landing: hero, five pillars, quote, how it works, and the two waitlists
 - `lib/pricing.ts` — quote math
 - `public/brand/` — smile wordmark (navy and white) and the house icon
-- `public/og.png` — share image
+- `public/og-option-a.png` — share image (ink, teal, blue). `og:image` / `twitter:image` use `https://tydlii.com/og-option-a.png?v=option-a-20261025` so link previews do not reuse the old navy file. `public/og.png` is the same art.
 - `public/favicon.ico` and `app/icon.png` — from the white-house icon
