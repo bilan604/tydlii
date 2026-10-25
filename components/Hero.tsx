@@ -38,9 +38,9 @@ export function Hero({ onPrice, onClean }: HeroProps) {
   return (
     <section className="hero" id="top" aria-labelledby="hero-title">
       <svg className="hero-art" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
-        <polygon points="640,0 1000,0 1000,600 470,600" fill="#20c7c7" opacity="0.92" />
-        <polygon points="760,0 1000,0 1000,600 640,600" fill="#3c8dff" opacity="0.28" />
-        <circle cx="120" cy="560" r="220" fill="rgba(255,255,255,0.04)" />
+        <polygon points="640,0 1000,0 1000,600 470,600" fill="var(--teal)" opacity="0.92" />
+        <polygon points="760,0 1000,0 1000,600 640,600" fill="var(--blue)" opacity="0.28" />
+        <circle cx="120" cy="560" r="220" fill="color-mix(in srgb, var(--on-ink) 4%, transparent)" />
       </svg>
       <div className="hero-grid">
         <div className="hero-copy">
@@ -98,26 +98,26 @@ export function Hero({ onPrice, onClean }: HeroProps) {
           <article className="phone" aria-label="App preview">
             <div className="map">
               <svg viewBox="0 0 320 180" role="img" aria-label="Live map showing your cleaner on the way">
-                <rect width="320" height="180" fill="#f4f7fb" />
+                <rect width="320" height="180" fill="var(--subtle)" />
                 {[30, 75, 120, 165].map((y) => (
-                  <line key={`h${y}`} x1="0" y1={y} x2="320" y2={y} stroke="rgba(11,47,107,0.08)" strokeWidth="7" />
+                  <line key={`h${y}`} x1="0" y1={y} x2="320" y2={y} stroke="var(--line-weak)" strokeWidth="7" />
                 ))}
                 {[40, 110, 190, 260].map((x) => (
-                  <line key={`v${x}`} x1={x} y1="0" x2={x} y2="180" stroke="rgba(11,47,107,0.08)" strokeWidth="7" />
+                  <line key={`v${x}`} x1={x} y1="0" x2={x} y2="180" stroke="var(--line-weak)" strokeWidth="7" />
                 ))}
-                <rect x="200" y="85" width="50" height="28" rx="4" fill="rgba(32,199,199,0.25)" />
+                <rect x="200" y="85" width="50" height="28" rx="4" fill="color-mix(in srgb, var(--teal) 25%, transparent)" />
                 <path
                   d="M40 165 L40 120 L110 120 L110 75 L190 75 L225 75 L225 99"
                   fill="none"
-                  stroke="#3c8dff"
+                  stroke="var(--blue)"
                   strokeWidth="4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeDasharray="2 8"
                 />
-                <circle cx="110" cy="96" r="13" fill="rgba(60,141,255,0.25)" />
-                <circle cx="110" cy="96" r="7" fill="#3c8dff" stroke="#ffffff" strokeWidth="2.5" />
-                <circle cx="225" cy="99" r="9" fill="#0b2f6b" stroke="#ffffff" strokeWidth="3" />
+                <circle cx="110" cy="96" r="13" fill="color-mix(in srgb, var(--blue) 25%, transparent)" />
+                <circle cx="110" cy="96" r="7" fill="var(--blue)" stroke="var(--on-ink)" strokeWidth="2.5" />
+                <circle cx="225" cy="99" r="9" fill="var(--ink)" stroke="var(--on-ink)" strokeWidth="3" />
               </svg>
             </div>
             <div className="phone-body">
