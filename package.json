@@ -1,0 +1,27 @@
+{
+  "name": "tydlii",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tydlii marketing and waitlist site for tydlii.com",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0 --port ${PORT:-3000}",
+    "test": "tsx --test lib/pricing.test.ts lib/waitlist.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "next": "^16.4.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0"
+  }
+}
