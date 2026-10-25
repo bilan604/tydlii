@@ -1,6 +1,6 @@
 # Tydlii
 
-Marketing and waitlist site for [tydlii.com](https://tydlii.com). Navy hero, teal and blue diagonals, smile wordmark. Customers and cleaners join separate lists. The cleaner list is a multi-select of neighbourhoods.
+Marketing and waitlist site for [tydlii.com](https://tydlii.com). The homepage is the Option A landing: a navy hero with teal and blue polygons on the right, the smile wordmark, five guarantees, and an audience toggle (`I need cleaning` / `I want to clean`). Customers get the instant quote, Tap. Book. Relax., and a single-neighbourhood waitlist. Cleaners get the earnings band and a multi-select neighbourhood waitlist.
 
 The promise on the site is a **Tydlii-certified cleaner in the booked window**, and a **re-clean if a Standard clean is missed**. It is not a same-cleaner or preferred-cleaner promise.
 
@@ -41,9 +41,9 @@ npm start
 ```
 
 - `type` is `customer` or `cleaner`.
-- **Cleaners send `neighbourhoods` as an array.** One area is allowed. Several are the normal case. The form is a pill multi-select, not a single dropdown.
-- Customers send one neighbourhood in that same array (the home is in one area).
-- Customer payloads may include `quote`, the instant-quote object, when they leave “Include my instant quote” checked.
+- **Cleaners send `neighbourhoods` as an array.** One area is allowed. Several are the normal case. The form is a pill multi-select — CityPlace, King West, Liberty Village, Yonge–Eglinton, North York Centre, and Other — not a single dropdown.
+- Customers send one neighbourhood in that same array. A postal code with no neighbourhood is stored as `Other`, and the postal code is written into `notes`.
+- Customer payloads include `quote`, the instant-quote object from the calculator.
 - A non-empty `website` field is a honeypot. The route returns 200 and does not store it.
 
 ### `WAITLIST_WEBHOOK_URL`
@@ -133,7 +133,7 @@ Use Cloudflare for DNS. Render issues the certificate. Follow [Render’s Cloudf
 ## What’s in the repo
 
 - `app/` — Next.js App Router pages, favicon, and `POST /api/waitlist`
-- `components/` — hero, quote, dual waitlist, and the rest of the page
+- `components/` — Option A landing: hero, five pillars, quote, how it works, and the two waitlists
 - `lib/pricing.ts` — quote math
 - `public/brand/` — smile wordmark (navy and white) and the house icon
 - `public/og.png` — share image

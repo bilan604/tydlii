@@ -1,23 +1,13 @@
-import { Diagonals } from "./Diagonals";
-
 export function Closer() {
   return (
-    <section className="closer navy-panel" aria-labelledby="closer-title">
-      <div className="art" aria-hidden="true">
-        <Diagonals />
-      </div>
-      <div className="wrap panel-inner closer-inner">
-        <p className="kicker">Tydlii</p>
-        <h2 id="closer-title">
-          More living.
-          <br />
-          <em>Less cleaning.</em>
-        </h2>
+    <section className="closer" aria-labelledby="closer-title">
+      <div className="close-band">
+        <h2 id="closer-title">Come home to clean.</h2>
         <p>
-          CityPlace, King West, and Liberty Village first. Yonge–Eglinton and North York Centre
-          next.
+          Our downtown pilot starts soon in CityPlace, King West and Liberty Village. We&apos;re not taking
+          bookings yet. Waitlist members hear first.
         </p>
-        <a className="btn btn-teal" href="#waitlist">
+        <a className="btn btn-navy" href="#join">
           Join the waitlist
         </a>
       </div>

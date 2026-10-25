@@ -7,10 +7,10 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <main className="missing">
+    <main className="missing shell">
       <p className="eyebrow">404</p>
       <h1>That page isn’t on the route.</h1>
-      <p>The clean is still in CityPlace, King West, and Liberty Village.</p>
+      <p>The downtown pilot is still opening in CityPlace, King West, and Liberty Village.</p>
       <a className="btn btn-navy" href="/">
         Back to Tydlii
       </a>

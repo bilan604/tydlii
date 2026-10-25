@@ -62,6 +62,19 @@ test("cleaner signup rejects an empty neighbourhood list", () => {
   });
 });
 
+test("other is a valid neighbourhood on its own or with a launch area", () => {
+  const parsed = parseWaitlist({
+    type: "cleaner",
+    name: "Jordan Hale",
+    email: "jordan@example.com",
+    neighbourhoods: ["Other", "Liberty Village"],
+    consent: true,
+  });
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.spam) return;
+  assert.deepEqual(parsed.value.neighbourhoods, ["Other", "Liberty Village"]);
+});
+
 test("unknown neighbourhoods and missing consent are rejected", () => {
   const badArea = parseWaitlist({
     ...customer,

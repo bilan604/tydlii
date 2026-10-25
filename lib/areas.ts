@@ -4,6 +4,7 @@ export const AREAS = [
   { name: "Liberty Village", wave: "launch" },
   { name: "Yonge–Eglinton", wave: "next" },
   { name: "North York Centre", wave: "next" },
+  { name: "Other", wave: "other" },
 ] as const;
 
 export type AreaName = (typeof AREAS)[number]["name"];

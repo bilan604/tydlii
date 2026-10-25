@@ -1,24 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Fraunces, Outfit } from "next/font/google";
+import { Outfit } from "next/font/google";
 import { AREAS } from "@/lib/areas";
 import { SITE } from "@/lib/site";
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
 import "./globals.css";
 
 const outfit = Outfit({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-outfit",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-fraunces",
   display: "swap",
 });
 
@@ -73,7 +64,7 @@ const jsonLd = {
   image: `${SITE.url}/og.png`,
   slogan: SITE.slogan,
   description: SITE.description,
-  areaServed: AREAS.map((area) => ({
+  areaServed: AREAS.filter((area) => area.name !== "Other").map((area) => ({
     "@type": "Place",
     name: `${area.name}, Toronto`,
   })),
@@ -88,12 +79,11 @@ const jsonLd = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en-CA" className={`${outfit.variable} ${fraunces.variable}`}>
+    <html lang="en-CA" className={outfit.variable}>
       <body>
         <a className="skip" href="#content">
           Skip to content
         </a>
-        <Header />
         <div id="content">{children}</div>
         <Footer />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
