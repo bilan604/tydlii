@@ -1,0 +1,17 @@
+# Render Blueprint for the Tydlii marketing site.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: tydlii
+    runtime: node
+    plan: starter
+    region: ohio
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Leave blank until a receiver exists. The route then logs and returns 200.
+      - key: WAITLIST_WEBHOOK_URL
+        sync: false
