@@ -1,52 +1,33 @@
+import { SectionIntro } from "./ui";
+
 const STEPS = [
   {
-    n: "01",
-    title: "Size up the home",
-    body: "Beds, baths, and square feet. The quote updates before you share an email.",
+    title: "Book in under a minute",
+    body: "Tell us about your home and pick a time. Your price is locked on the spot.",
   },
   {
-    n: "02",
-    title: "Join your neighbourhood",
-    body: "Customers and cleaners each have a list. We write when that area opens.",
+    title: "Meet your cleaner",
+    body: "Tydlii-certified: background-checked, ID-verified, trained to the Tydlii Standard and insured. In your window, every visit.",
   },
   {
-    n: "03",
-    title: "Book a window",
-    body: "When booking opens, pick a window. A Tydlii-certified cleaner takes the visit.",
+    title: "Come home to clean",
+    body: "Track the arrival, see the photos, and get your evening back.",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section className="section how-section" id="how" aria-labelledby="how-title">
-      <div className="wrap">
-        <div className="section-intro how-intro">
-          <p className="eyebrow">How it works</p>
-          <h2 id="how-title">Tap. Book. Relax.</h2>
-        </div>
-        <ol className="steps">
-          {STEPS.map((step) => (
-            <li key={step.n}>
-              <span>{step.n}</span>
-              <h3>{step.title}</h3>
-              <p>{step.body}</p>
-            </li>
-          ))}
-        </ol>
-        <aside className="promise-band">
-          <p className="eyebrow">Plainly</p>
-          <div className="promise-grid">
-            <h2>Not the same cleaner.</h2>
-            <div>
-              <p className="promise-lead">A Tydlii-certified cleaner, every visit.</p>
-              <p>
-                You book a window. We send a cleaner held to the Tydlii standard. We do not
-                promise that one person returns. If a Standard clean misses the mark, we re-clean.
-              </p>
-            </div>
-          </div>
-        </aside>
-      </div>
+    <section className="block" id="how" aria-labelledby="how-title">
+      <SectionIntro kicker="How it works" title="Tap. Book. Relax." titleId="how-title" />
+      <ol className="steps">
+        {STEPS.map((step, index) => (
+          <li key={step.title}>
+            <span className="step-num">{index + 1}</span>
+            <h3>{step.title}</h3>
+            <p>{step.body}</p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

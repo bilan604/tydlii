@@ -1,46 +1,62 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { cad, multiplierLabel } from "@/lib/format";
+import { cad } from "@/lib/format";
 import {
-  CONDITIONS,
-  FREQUENCIES,
   SQFT_BANDS,
   quoteHome,
   type BandId,
   type Condition,
   type Frequency,
   type Quote,
+  type QuoteInput,
 } from "@/lib/pricing";
-import { QUOTE_EVENT, QUOTE_STORAGE_KEY } from "@/lib/quote-summary";
+import { Check, SectionIntro } from "./ui";
 
-function explanation(quote: Quote): string {
-  if (quote.custom) return "";
-  if (quote.condition === "overdue" && quote.plan) {
-    return "The first visit is a reset clean (one-time rate × 1.4). Visits after that use your plan rate.";
-  }
-  if (quote.condition === "overdue") {
-    return "This overdue visit is a reset clean: the one-time rate × 1.4.";
-  }
-  if (!quote.plan && quote.condition === "livedin") {
-    return "Lived-in homes are priced at 1.1× the one-time rate.";
-  }
-  if (!quote.plan) {
-    return "One-time visits use the one-time rate, then we round to the nearest price ending in 9.";
-  }
-  if (quote.condition === "livedin") {
-    return "Lived-in homes are 1.1×. The first visit uses the one-time rate. Your plan rate starts after that.";
-  }
-  return "The first visit uses the one-time rate. Your plan rate starts on the next visit.";
-}
+export const DEFAULT_QUOTE_INPUT: QuoteInput = {
+  band: "C",
+  bedrooms: 2,
+  fullBaths: 1,
+  halfBaths: 0,
+  frequency: "biweekly",
+  condition: "standard",
+};
 
-export function QuoteCalculator() {
-  const [band, setBand] = useState<BandId>("B");
-  const [bedrooms, setBedrooms] = useState(1);
-  const [fullBaths, setFullBaths] = useState(1);
-  const [halfBaths, setHalfBaths] = useState(0);
-  const [frequency, setFrequency] = useState<Frequency>("biweekly");
-  const [condition, setCondition] = useState<Condition>("standard");
+export type QuoteSnapshot = {
+  quote: Quote;
+  bedrooms: number;
+  fullBaths: number;
+  halfBaths: number;
+  frequency: Frequency;
+};
+
+const FREQUENCIES: { id: Frequency; label: string }[] = [
+  { id: "weekly", label: "Weekly" },
+  { id: "biweekly", label: "Bi-weekly" },
+  { id: "every4", label: "Every 4 weeks" },
+  { id: "onetime", label: "One-time" },
+];
+
+const CONDITIONS: { id: Condition; label: string }[] = [
+  { id: "standard", label: "Maintained" },
+  { id: "livedin", label: "Lived-in (pets, kids, 4+ wks)" },
+  { id: "overdue", label: "Overdue (needs a reset)" },
+];
+
+const FREQ_LABEL: Record<Frequency, string> = {
+  weekly: "Weekly",
+  biweekly: "Bi-weekly",
+  every4: "Every 4 weeks",
+  onetime: "One-time",
+};
+
+export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapshot) => void }) {
+  const [band, setBand] = useState<BandId>(DEFAULT_QUOTE_INPUT.band);
+  const [bedrooms, setBedrooms] = useState(DEFAULT_QUOTE_INPUT.bedrooms);
+  const [fullBaths, setFullBaths] = useState(DEFAULT_QUOTE_INPUT.fullBaths);
+  const [halfBaths, setHalfBaths] = useState(DEFAULT_QUOTE_INPUT.halfBaths);
+  const [frequency, setFrequency] = useState<Frequency>(DEFAULT_QUOTE_INPUT.frequency);
+  const [condition, setCondition] = useState<Condition>(DEFAULT_QUOTE_INPUT.condition);
 
   const quote = useMemo(
     () => quoteHome({ band, bedrooms, fullBaths, halfBaths, frequency, condition }),
@@ -48,255 +64,136 @@ export function QuoteCalculator() {
   );
 
   useEffect(() => {
-    try {
-      sessionStorage.setItem(QUOTE_STORAGE_KEY, JSON.stringify(quote));
-    } catch {
-      // Private mode can block storage. The quote still renders.
-    }
-    window.dispatchEvent(new Event(QUOTE_EVENT));
-  }, [quote]);
+    onChange({ quote, bedrooms, fullBaths, halfBaths, frequency });
+  }, [onChange, quote, bedrooms, fullBaths, halfBaths, frequency]);
 
-  const headline = quote.custom ? null : (quote.plan ?? quote.first);
+  const headline = quote.custom ? null : frequency === "onetime" || !quote.plan ? quote.first : quote.plan;
   const eyebrow = quote.custom
-    ? "Custom"
-    : quote.plan
-      ? `${quote.frequencyLabel} plan`
-      : quote.firstKind === "reset"
-        ? "Reset clean"
-        : "One-time visit";
+    ? quote.label
+    : frequency === "onetime"
+      ? quote.firstKind === "reset"
+        ? "One-time reset clean"
+        : "One-time clean"
+      : `${FREQ_LABEL[frequency]} · per visit`;
 
   return (
-    <section className="section quote-section" id="quote" aria-labelledby="quote-title">
-      <div className="wrap quote-layout">
-        <div>
-          <p className="eyebrow">Instant quote</p>
-          <h2 id="quote-title">See the price before you book.</h2>
-          <p className="section-lead">
-            Canadian dollars, rounded to the nearest price ending in 9. The first visit is priced
-            on its own. HST is 13% and shown beside the pre-tax amount.
-          </p>
-
-          <div className="quote-form">
-            <label className="field-label" htmlFor="sqft">
-              Home size
+    <section className="block tight" id="price" aria-labelledby="quote-title">
+      <SectionIntro
+        titleId="quote-title"
+        kicker="Instant price"
+        title="Your price, in seconds."
+        sub="Locked before you book. Prices shown before HST; Ontario HST (13%) is added at checkout."
+      />
+      <div className="quote-split">
+        <div className="quote-form">
+          <h3>Tell us about your home</h3>
+          <div className="form-grid">
+            <label className="field">
+              <span>Bedrooms (den counts as one)</span>
+              <select value={bedrooms} onChange={(event) => setBedrooms(Number(event.target.value))}>
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
             </label>
-            <select
-              id="sqft"
-              className="field"
-              value={band}
-              onChange={(event) => setBand(event.target.value as BandId)}
-            >
-              {SQFT_BANDS.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                  {item.base == null ? " · custom" : ""}
-                </option>
-              ))}
-            </select>
-
-            <div className="stepper-grid">
-              <Stepper
-                label="Bedrooms"
-                valueLabel={bedrooms === 0 ? "Studio" : String(bedrooms)}
-                decLabel="Fewer bedrooms"
-                incLabel="More bedrooms"
-                onDec={() => setBedrooms((value) => Math.max(0, value - 1))}
-                onInc={() => setBedrooms((value) => Math.min(8, value + 1))}
-                decDisabled={bedrooms === 0}
-                incDisabled={bedrooms === 8}
-              />
-              <Stepper
-                label="Full baths"
-                valueLabel={String(fullBaths)}
-                decLabel="Fewer full baths"
-                incLabel="More full baths"
-                onDec={() => setFullBaths((value) => Math.max(1, value - 1))}
-                onInc={() => setFullBaths((value) => Math.min(8, value + 1))}
-                decDisabled={fullBaths === 1}
-                incDisabled={fullBaths === 8}
-              />
-              <Stepper
-                label="Half baths"
-                valueLabel={String(halfBaths)}
-                decLabel="Fewer half baths"
-                incLabel="More half baths"
-                onDec={() => setHalfBaths((value) => Math.max(0, value - 1))}
-                onInc={() => setHalfBaths((value) => Math.min(6, value + 1))}
-                decDisabled={halfBaths === 0}
-                incDisabled={halfBaths === 6}
-              />
-            </div>
-
-            <fieldset>
-              <legend>How often</legend>
-              <div className="seg-grid" role="radiogroup" aria-label="How often">
+            <label className="field">
+              <span>Full bathrooms</span>
+              <select value={fullBaths} onChange={(event) => setFullBaths(Number(event.target.value))}>
+                {[1, 2, 3, 4].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Half bathrooms</span>
+              <select value={halfBaths} onChange={(event) => setHalfBaths(Number(event.target.value))}>
+                {[0, 1, 2].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Home size</span>
+              <select value={band} onChange={(event) => setBand(event.target.value as BandId)}>
+                {SQFT_BANDS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>How often</span>
+              <select value={frequency} onChange={(event) => setFrequency(event.target.value as Frequency)}>
                 {FREQUENCIES.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={frequency === item.id}
-                    className={frequency === item.id ? "seg on" : "seg"}
-                    onClick={() => setFrequency(item.id)}
-                  >
-                    <strong>{item.label}</strong>
-                    <small>
-                      {multiplierLabel(item.multiplier)} · {item.hint}
-                    </small>
-                  </button>
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
                 ))}
-              </div>
-            </fieldset>
-
-            <fieldset>
-              <legend>Condition of the home</legend>
-              <div className="condition-list">
+              </select>
+            </label>
+            <label className="field">
+              <span>Condition today</span>
+              <select value={condition} onChange={(event) => setCondition(event.target.value as Condition)}>
                 {CONDITIONS.map((item) => (
-                  <label key={item.id} className={condition === item.id ? "choice on" : "choice"}>
-                    <input
-                      type="radio"
-                      name="condition"
-                      value={item.id}
-                      checked={condition === item.id}
-                      onChange={() => setCondition(item.id)}
-                    />
-                    <span>
-                      <strong>{item.label}</strong>
-                      <small>{item.hint}</small>
-                    </span>
-                  </label>
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
                 ))}
-              </div>
-            </fieldset>
+              </select>
+            </label>
           </div>
         </div>
 
-        <aside className="quote-card">
-          {quote.custom || !headline ? (
-            <div className="quote-custom">
-              <p className="quote-kicker">2,500+ sq ft</p>
-              <h3>We’ll price this one with you.</h3>
-              <p>
-                Homes at this size are a custom quote. Join the waitlist and tell us about the
-                home. No guessed number.
-              </p>
-              <a className="btn btn-teal" href="#waitlist">
-                Join the waitlist
-              </a>
-            </div>
-          ) : (
-            <>
-              <p className="quote-kicker">{eyebrow}</p>
-              <p className="sr" aria-live="polite">
-                {eyebrow}: {cad(headline.beforeHst)} before HST, {cad(headline.withHst, true)} with
-                HST.
-              </p>
-              <p className="quote-price">{cad(headline.beforeHst)}</p>
-              <p className="quote-tax">
-                before HST
-                <span>{cad(headline.withHst, true)} with 13% HST</span>
-              </p>
-              {quote.plan ? (
-                <p className="quote-first">
-                  {quote.firstKind === "reset" ? "Reset clean, first visit" : "First visit"}{" "}
-                  <strong>{cad(quote.first.beforeHst)}</strong> before HST
-                  <span> · {cad(quote.first.withHst, true)} with HST</span>
+        <aside className="quote-panel">
+          <svg className="panel-art" viewBox="0 0 400 400" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points="300,0 400,0 400,400 200,400" fill="#20c7c7" opacity="0.22" />
+          </svg>
+          <div className="panel-copy">
+            {quote.custom || !headline ? (
+              <>
+                <p className="eyebrow on-dark">{quote.custom ? quote.label : "Custom"}</p>
+                <h3 className="custom-title">A custom, guaranteed quote.</h3>
+                <p>
+                  Larger homes get a fixed price from a short video walkthrough. Join the waitlist and
+                  we&apos;ll be in touch.
                 </p>
-              ) : null}
-              <p className="quote-note">{explanation(quote)}</p>
-              <dl className="breakdown">
-                <div>
-                  <dt>
-                    Band {quote.band} · {quote.label}
-                  </dt>
-                  <dd>{cad(quote.base)}</dd>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow on-dark">{eyebrow}</p>
+                <p className="sr" aria-live="polite">
+                  {eyebrow}: {cad(headline.beforeHst)} before HST, {cad(headline.withHst, true)} with HST.
+                </p>
+                <div className="price-row">
+                  <span className="quote-price">{cad(headline.beforeHst)}</span>
+                  <span className="price-tax">+ HST</span>
                 </div>
-                {quote.bedroomAdd > 0 ? (
-                  <div>
-                    <dt>Bedrooms after the first</dt>
-                    <dd>+{cad(quote.bedroomAdd)}</dd>
-                  </div>
-                ) : null}
-                {quote.fullBathAdd > 0 ? (
-                  <div>
-                    <dt>Full baths after the first</dt>
-                    <dd>+{cad(quote.fullBathAdd)}</dd>
-                  </div>
-                ) : null}
-                {quote.halfBathAdd > 0 ? (
-                  <div>
-                    <dt>Half baths</dt>
-                    <dd>+{cad(quote.halfBathAdd)}</dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt>Subtotal</dt>
-                  <dd>{cad(quote.subtotal)}</dd>
-                </div>
-                {quote.planRaw != null ? (
-                  <div>
-                    <dt>
-                      {quote.frequencyLabel} {multiplierLabel(quote.frequencyMultiplier)}
-                      {quote.livedInMultiplier !== 1
-                        ? ` · lived-in ${multiplierLabel(quote.livedInMultiplier)}`
-                        : ""}
-                    </dt>
-                    <dd>{cad(quote.planRaw)}</dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt>
+                <p className="price-incl">{cad(headline.withHst, true)} including 13% HST</p>
+                <div className="rule" />
+                {frequency !== "onetime" ? (
+                  <Check onDark>
                     {quote.firstKind === "reset"
-                      ? "Reset · one-time ×1.22 × 1.40"
-                      : `First visit · one-time ×1.22${
-                          quote.livedInMultiplier !== 1 ? " · lived-in ×1.10" : ""
-                        }`}
-                  </dt>
-                  <dd>{cad(quote.firstRaw)}</dd>
-                </div>
-              </dl>
-              <a className="btn btn-teal quote-cta" href="#waitlist">
-                Join with this quote
-              </a>
-            </>
-          )}
+                      ? "First visit is a deep Reset clean: "
+                      : "First visit is a deeper clean: "}
+                    {cad(quote.first.beforeHst)} + HST. Your plan price starts from visit two.
+                  </Check>
+                ) : null}
+                <Check onDark>
+                  The price you see is the price you pay. If your home differs a lot from what you booked, we
+                  call before we start.
+                </Check>
+              </>
+            )}
+          </div>
         </aside>
       </div>
     </section>
-  );
-}
-
-function Stepper({
-  label,
-  valueLabel,
-  decLabel,
-  incLabel,
-  onDec,
-  onInc,
-  decDisabled,
-  incDisabled,
-}: {
-  label: string;
-  valueLabel: string;
-  decLabel: string;
-  incLabel: string;
-  onDec: () => void;
-  onInc: () => void;
-  decDisabled: boolean;
-  incDisabled: boolean;
-}) {
-  return (
-    <div className="stepper-field">
-      <span className="field-label">{label}</span>
-      <div className="stepper" role="group" aria-label={label}>
-        <button type="button" onClick={onDec} disabled={decDisabled} aria-label={decLabel}>
-          −
-        </button>
-        <span aria-live="polite">{valueLabel}</span>
-        <button type="button" onClick={onInc} disabled={incDisabled} aria-label={incLabel}>
-          +
-        </button>
-      </div>
-    </div>
   );
 }

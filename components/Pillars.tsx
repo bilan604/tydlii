@@ -1,50 +1,48 @@
+import { SectionIntro } from "./ui";
+
 const PILLARS = [
   {
-    n: "01",
-    title: "The window you booked",
-    body: "You choose a window. A Tydlii-certified cleaner arrives inside it.",
+    title: "Know the price",
+    body: "An instant price from your bedrooms, bathrooms and square footage, locked before you book.",
   },
   {
-    n: "02",
-    title: "Certified, every visit",
-    body: "The promise is the Tydlii standard. It is not a named person who always returns.",
+    title: "Know who's coming",
+    body: "A vetted, Tydlii-certified cleaner in your booked window, every visit, briefed on your home notes.",
   },
   {
-    n: "03",
-    title: "Re-clean if we miss",
-    body: "If a Standard clean misses the mark, we come back and re-clean.",
+    title: "Know when",
+    body: "A 1-hour arrival window and a live map as they head your way. Late? You're credited automatically.",
   },
   {
-    n: "04",
-    title: "A price you can see",
-    body: "The quote shows the visit before HST and with 13% HST, before you join the list.",
+    title: "Know it's done",
+    body: "After photos of every key room and the finished checklist, before you get home.",
+  },
+  {
+    title: "Know it's handled",
+    body: "Missed anything on the Tydlii Standard? Tell us within 48 hours and we re-clean within 24.",
   },
 ];
 
 export function Pillars() {
   return (
-    <section className="section pillars-section" id="promise" aria-labelledby="promise-title">
-      <div className="wrap pillars-layout">
-        <div className="section-intro">
-          <p className="eyebrow">The promise</p>
-          <h2 id="promise-title">A certified clean, in the window you booked.</h2>
-          <p>
-            Tydlii sends a certified cleaner to your home. We hold the visit to one standard.
-            We do not lock you to one person.
-          </p>
-        </div>
-        <ol className="pillar-list">
-          {PILLARS.map((pillar) => (
-            <li key={pillar.n}>
-              <span>{pillar.n}</span>
-              <div>
-                <h3>{pillar.title}</h3>
-                <p>{pillar.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
+    <section className="block pillars" aria-labelledby="promise-title">
+      <SectionIntro
+        center
+        titleId="promise-title"
+        kicker="Every clean, guaranteed"
+        title="Know who's coming. Know what you'll pay."
+        sub="Five promises, on every visit. No chasing, no guessing."
+      />
+      <ol className="pillar-grid">
+        {PILLARS.map((pillar, index) => (
+          <li key={pillar.title} className="pillar">
+            <span className="pillar-index">{`0${index + 1}`}</span>
+            <span className="accent-bar" />
+            <h3>{pillar.title}</h3>
+            <p>{pillar.body}</p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
