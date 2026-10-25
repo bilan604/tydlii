@@ -13,6 +13,9 @@ const outfit = Outfit({
   display: "swap",
 });
 
+// New filename plus query so iMessage/Twitter cannot reuse the cached navy /og.png.
+const OG_IMAGE = `${SITE.url}/og-option-a.png?v=option-a-20261025`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: {
@@ -32,7 +35,7 @@ export const metadata: Metadata = {
     description: SITE.description,
     images: [
       {
-        url: "/og.png",
+        url: OG_IMAGE,
         width: 1200,
         height: 630,
         alt: "Tydlii — More living. Less cleaning.",
@@ -45,7 +48,14 @@ export const metadata: Metadata = {
     creator: SITE.social.handle,
     title: "Tydlii — More living. Less cleaning.",
     description: SITE.description,
-    images: ["/og.png"],
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "Tydlii — More living. Less cleaning.",
+      },
+    ],
   },
   robots: { index: true, follow: true },
 };
@@ -61,7 +71,7 @@ const jsonLd = {
   "@type": "ProfessionalService",
   name: SITE.name,
   url: SITE.url,
-  image: `${SITE.url}/og.png`,
+  image: OG_IMAGE,
   slogan: SITE.slogan,
   description: SITE.description,
   areaServed: AREAS.filter((area) => area.name !== "Other").map((area) => ({
