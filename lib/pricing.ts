@@ -1,7 +1,9 @@
 /**
- * Instant quote math from the Tydlii landing brief. Keep this identical.
+ * Instant quote math from the Tydlii landing brief, extended through 20,000 sq ft.
  *
- * Bands A–H sq ft bases: 165, 189, 209, 239, 269, 299, 339, custom
+ * Bands A–C keep the published bases: 165, 189, 209.
+ * From band D up, base = 139 + $0.10 × the band floor. That line is the brief for
+ * D–G (239, 269, 299, 339) and the same formula prices every larger band.
  * +20 per bedroom after the first, +30 per full bath after the first, +15 per half bath
  * Frequency: weekly 0.91, biweekly 1.0, every 4 weeks 1.1, one-time 1.22
  * Lived-in ×1.1
@@ -9,7 +11,8 @@
  * Round the charged pre-tax amount to the nearest price ending in 9 (`to9`).
  * Show that amount before HST, and again with 13% HST.
  *
- * Sq ft cut points label those bases. They are the public bands for A–H.
+ * Sq ft cut points label those bases. They are the public bands. A null base would
+ * be a custom quote; every published band has a price.
  */
 
 export const HST_RATE = 0.13;
@@ -22,7 +25,21 @@ export const SQFT_BANDS = [
   { id: "E", label: "1,300–1,599 sq ft", base: 269 },
   { id: "F", label: "1,600–1,999 sq ft", base: 299 },
   { id: "G", label: "2,000–2,499 sq ft", base: 339 },
-  { id: "H", label: "2,500+ sq ft", base: null },
+  { id: "H", label: "2,500–2,999 sq ft", base: 389 },
+  { id: "I", label: "3,000–3,499 sq ft", base: 439 },
+  { id: "J", label: "3,500–3,999 sq ft", base: 489 },
+  { id: "K", label: "4,000–4,499 sq ft", base: 539 },
+  { id: "L", label: "4,500–4,999 sq ft", base: 589 },
+  { id: "M", label: "5,000–5,999 sq ft", base: 639 },
+  { id: "N", label: "6,000–6,999 sq ft", base: 739 },
+  { id: "O", label: "7,000–7,999 sq ft", base: 839 },
+  { id: "P", label: "8,000–8,999 sq ft", base: 939 },
+  { id: "Q", label: "9,000–9,999 sq ft", base: 1039 },
+  { id: "R", label: "10,000–11,999 sq ft", base: 1139 },
+  { id: "S", label: "12,000–13,999 sq ft", base: 1339 },
+  { id: "T", label: "14,000–15,999 sq ft", base: 1539 },
+  { id: "U", label: "16,000–17,999 sq ft", base: 1739 },
+  { id: "V", label: "18,000–20,000 sq ft", base: 1939 },
 ] as const;
 
 export type BandId = (typeof SQFT_BANDS)[number]["id"];
@@ -128,10 +145,13 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function quoteHome(input: QuoteInput): Quote {
-  const band = SQFT_BANDS.find((item) => item.id === input.band);
-  if (!band) {
+  const found = SQFT_BANDS.find((item) => item.id === input.band);
+  if (!found) {
     throw new Error(`Unknown sq ft band: ${input.band}`);
   }
+  // Widen `base` so a future unpriced band still returns a custom quote.
+  // Every band published today has a number.
+  const band: { id: BandId; label: string; base: number | null } = found;
   if (band.base == null) {
     return { custom: true, band: band.id, label: band.label };
   }
