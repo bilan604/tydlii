@@ -1,6 +1,21 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rename, stat, unlink } from "node:fs/promises";
 import path from "node:path";
+import {
+  REFERRAL_ALPHABET,
+  REFERRAL_CODE_LENGTH,
+  REFERRAL_CREDIT_CENTS,
+  REFERRAL_CREDIT_CURRENCY,
+  applyEarnedCredit,
+  decideReferral,
+  earnPendingCredits,
+  normalizeReferralCode,
+  parseCreditList,
+  referralManageUrl,
+  referralShareUrl,
+  type CustomerReferral,
+  type ReferralCredit,
+} from "./referral";
 import type { WaitlistSignup } from "./waitlist";
 
 /**
@@ -25,11 +40,18 @@ export type StoreEntry = {
   claimId: string;
   /** ISO time while the browser is still emailing. Null once the signup is kept. */
   pendingUntil: string | null;
+  /** Set when a customer signup is kept. Null for cleaners and for rows saved before referrals. */
+  referralCode: string | null;
+  /** Code the customer submitted. Null when they were not referred, or the code was rejected. */
+  referredByCode: string | null;
+  /** Referrer email once a code matches a confirmed customer. */
+  referredByEmail: string | null;
 };
 
 type StoreFile = {
   version: 1;
   entries: Record<string, StoreEntry>;
+  credits: ReferralCredit[];
 };
 
 export type ClaimOutcome =
@@ -38,8 +60,23 @@ export type ClaimOutcome =
   | { status: "unavailable" };
 
 export type ConfirmOutcome =
-  | { status: "confirmed"; signup: WaitlistSignup; createdAt: string }
+  | { status: "confirmed"; signup: WaitlistSignup; createdAt: string; referral: CustomerReferral | null }
   | { status: "already" }
+  | { status: "missing" }
+  | { status: "unavailable" };
+
+export type EarnOutcome = { status: "ok"; earned: number } | { status: "invalid" } | { status: "unavailable" };
+
+export type ApplyOutcome =
+  | { status: "applied" }
+  | { status: "already" }
+  | { status: "not-earned" }
+  | { status: "missing" }
+  | { status: "invalid" }
+  | { status: "unavailable" };
+
+export type ReferralLookup =
+  | { status: "found"; code: string; name: string }
   | { status: "missing" }
   | { status: "unavailable" };
 
@@ -50,11 +87,27 @@ export type ForgetOutcome = "removed" | "missing" | "seeded" | "unavailable";
 export type ForgetAllOutcome = { status: "cleared"; count: number } | { status: "unavailable" };
 
 export type WaitlistStore = {
-  claim(signup: WaitlistSignup): Promise<ClaimOutcome>;
+  claim(signup: WaitlistSignup, meta?: { referralCode?: string | null }): Promise<ClaimOutcome>;
   confirm(email: string, claimId: string): Promise<ConfirmOutcome>;
   release(email: string, claimId: string): Promise<ReleaseOutcome>;
   forget(email: string): Promise<ForgetOutcome>;
   forgetAll(): Promise<ForgetAllOutcome>;
+  /**
+   * Confirmed customer for a referral code. Does not return the email.
+   * Pending reserves are ignored.
+   */
+  lookupReferral(code: string): Promise<ReferralLookup>;
+  /**
+   * Move pending credits for this referred email to `earned`.
+   * See `earnReferralCreditsForFirstPaidClean` in `lib/referral-credits.ts`.
+   * Idempotent: a second call earns 0. Refuses a blank booking id.
+   */
+  earnFirstPaidClean(email: string, bookingId: string): Promise<EarnOutcome>;
+  /**
+   * Mark one earned credit applied to an invoice.
+   * Refuses `pending` credits. There is no cash path.
+   */
+  applyReferralCredit(creditId: string, bookingId: string): Promise<ApplyOutcome>;
 };
 
 export type StoreOptions = {
@@ -136,7 +189,97 @@ function seedsOf(options: StoreOptions): Set<string> {
 }
 
 function emptyFile(): StoreFile {
-  return { version: 1, entries: {} };
+  return { version: 1, entries: {}, credits: [] };
+}
+
+function randomReferralCode(length = REFERRAL_CODE_LENGTH): string {
+  const bytes = randomBytes(length);
+  let code = "";
+  for (let index = 0; index < length; index += 1) {
+    code += REFERRAL_ALPHABET[bytes[index] % REFERRAL_ALPHABET.length];
+  }
+  return code;
+}
+
+function uniqueReferralCode(file: StoreFile): string {
+  const used = new Set(
+    Object.values(file.entries)
+      .map((entry) => entry.referralCode)
+      .filter((code): code is string => typeof code === "string" && code.length > 0),
+  );
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const code = randomReferralCode();
+    if (!used.has(code)) return code;
+  }
+  const code = randomReferralCode(12);
+  return used.has(code) ? `${code}${randomReferralCode(4)}` : code;
+}
+
+function confirmedCustomerByCode(file: StoreFile, code: string): StoreEntry | null {
+  for (const entry of Object.values(file.entries)) {
+    if (entry.type !== "customer" || entry.pendingUntil || entry.referralCode !== code) continue;
+    return entry;
+  }
+  return null;
+}
+
+/**
+ * Assign this customer's code and, when the friend code is valid, store
+ * referredBy and open one pending credit pair. A second credit for the same
+ * referred email is refused. Self-referral is refused. Cleaners never call this.
+ */
+function attachCustomerReferral(file: StoreFile, current: StoreEntry, at: string): CustomerReferral {
+  const code = current.referralCode ?? uniqueReferralCode(file);
+  current.referralCode = code;
+  const existing = file.credits.filter((credit) => credit.referredEmail === current.email);
+  const requested = current.referredByCode ?? "";
+  const referrer = requested ? confirmedCustomerByCode(file, requested) : null;
+  const decision = decideReferral({
+    signupEmail: current.email,
+    requestedCode: requested,
+    referrerEmail: referrer?.email ?? null,
+    alreadyCredited: existing.length > 0,
+  });
+
+  if (existing.length > 0) {
+    current.referredByEmail = existing[0].referrerEmail;
+    current.referredByCode = existing[0].code;
+    console.log("[tydlii referral] credit already exists", current.email);
+  } else if (!decision.ok) {
+    if (decision.reason === "self") console.log("[tydlii referral] blocked self-referral", current.email);
+    else if (decision.reason === "unknown" && requested) console.log("[tydlii referral] unknown code", requested);
+    current.referredByCode = null;
+    current.referredByEmail = null;
+  } else {
+    current.referredByCode = decision.referredByCode;
+    current.referredByEmail = decision.referrerEmail;
+    const shared = {
+      referredEmail: current.email,
+      referrerEmail: decision.referrerEmail,
+      code: decision.referredByCode,
+      amountCents: REFERRAL_CREDIT_CENTS,
+      currency: REFERRAL_CREDIT_CURRENCY,
+      status: "pending" as const,
+      createdAt: at,
+      earnedAt: null,
+      appliedAt: null,
+      earnedBookingId: null,
+      appliedBookingId: null,
+    };
+    file.credits.push(
+      { ...shared, id: randomUUID(), beneficiaryEmail: decision.referrerEmail, role: "referrer" },
+      { ...shared, id: randomUUID(), beneficiaryEmail: current.email, role: "friend" },
+    );
+  }
+
+  return {
+    code,
+    shareUrl: referralShareUrl(code),
+    manageUrl: referralManageUrl(code),
+    referredByCode: current.referredByCode,
+    referredByEmail: current.referredByEmail,
+    creditsCreated: decision.ok ? 2 : 0,
+  };
 }
 
 function asEntry(value: unknown): StoreEntry | null {
@@ -160,6 +303,9 @@ function asEntry(value: unknown): StoreEntry | null {
     source: typeof entry.source === "string" ? entry.source : SOURCE,
     claimId: entry.claimId,
     pendingUntil: entry.pendingUntil ?? null,
+    referralCode: normalizeReferralCode(entry.referralCode) || null,
+    referredByCode: normalizeReferralCode(entry.referredByCode) || null,
+    referredByEmail: typeof entry.referredByEmail === "string" ? normalizeEmail(entry.referredByEmail) : null,
   };
 }
 
@@ -176,13 +322,15 @@ async function load(filePath: string): Promise<StoreFile> {
   if (!data || data.version !== 1 || !data.entries || typeof data.entries !== "object") {
     throw new Error("invalid waitlist store");
   }
+  const credits = parseCreditList(data.credits);
+  if (!credits) throw new Error("invalid waitlist store");
   const entries: Record<string, StoreEntry> = {};
   for (const [key, value] of Object.entries(data.entries)) {
     const entry = asEntry(value);
     if (!entry) throw new Error(`invalid waitlist entry: ${key}`);
     entries[entry.email] = entry;
   }
-  return { version: 1, entries };
+  return { version: 1, entries, credits };
 }
 
 async function save(filePath: string, file: StoreFile): Promise<void> {
@@ -227,7 +375,12 @@ function toSignup(entry: StoreEntry): WaitlistSignup {
   };
 }
 
-function snapshot(signup: WaitlistSignup, claimId: string, now: number): StoreEntry {
+function snapshot(
+  signup: WaitlistSignup,
+  claimId: string,
+  now: number,
+  referralCode: string | null,
+): StoreEntry {
   return {
     email: normalizeEmail(signup.email),
     type: signup.type,
@@ -240,6 +393,9 @@ function snapshot(signup: WaitlistSignup, claimId: string, now: number): StoreEn
     source: SOURCE,
     claimId,
     pendingUntil: new Date(now + CLAIM_TTL_MS).toISOString(),
+    referralCode: null,
+    referredByCode: signup.type === "customer" ? referralCode : null,
+    referredByEmail: null,
   };
 }
 
@@ -263,7 +419,7 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
   }
 
   return {
-    async claim(signup) {
+    async claim(signup, meta) {
       const email = normalizeEmail(signup.email);
       if (seedsOf(options).has(email)) return { status: "duplicate" };
       const target = filePath();
@@ -271,6 +427,7 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
         logUnavailable(target);
         return { status: "unavailable" };
       }
+      const referralCode = normalizeReferralCode(meta?.referralCode);
       try {
         return await withLock(target, async () => {
           const file = await load(target);
@@ -280,7 +437,7 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
             return { status: "duplicate" } as const;
           }
           const claimId = randomUUID();
-          file.entries[email] = snapshot(signup, claimId, now());
+          file.entries[email] = snapshot(signup, claimId, now(), referralCode || null);
           await save(target, file);
           return { status: "claimed", claimId } as const;
         });
@@ -305,12 +462,15 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
           const current = file.entries[key];
           if (!current || current.claimId !== id) return { status: "missing" } as const;
           if (!current.pendingUntil) return { status: "already" } as const;
+          const at = new Date(now()).toISOString();
+          const referral = current.type === "customer" ? attachCustomerReferral(file, current, at) : null;
           current.pendingUntil = null;
           await save(target, file);
           return {
             status: "confirmed",
             signup: toSignup(current),
             createdAt: current.createdAt,
+            referral,
           } as const;
         });
       } catch (error) {
@@ -378,6 +538,77 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
           const count = Object.keys(file.entries).length;
           await save(target, emptyFile());
           return { status: "cleared", count } as const;
+        });
+      } catch (error) {
+        logUnavailable(target, error);
+        return { status: "unavailable" };
+      }
+    },
+
+    async lookupReferral(code) {
+      const normalized = normalizeReferralCode(code);
+      if (!normalized) return { status: "missing" };
+      const target = filePath();
+      if (!(await ensureDurable(target))) {
+        logUnavailable(target);
+        return { status: "unavailable" };
+      }
+      try {
+        const file = await load(target);
+        const entry = confirmedCustomerByCode(file, normalized);
+        if (!entry) return { status: "missing" };
+        return { status: "found", code: entry.referralCode ?? normalized, name: entry.name };
+      } catch (error) {
+        logUnavailable(target, error);
+        return { status: "unavailable" };
+      }
+    },
+
+    async earnFirstPaidClean(email, bookingId) {
+      const key = normalizeEmail(email);
+      const booking = bookingId.trim();
+      if (!key || !booking) return { status: "invalid" };
+      const target = filePath();
+      if (!(await ensureDurable(target))) {
+        logUnavailable(target);
+        return { status: "unavailable" };
+      }
+      try {
+        return await withLock(target, async () => {
+          const file = await load(target);
+          const at = new Date(now()).toISOString();
+          const earned = earnPendingCredits(file.credits, key, booking, at);
+          if (earned.earned > 0) {
+            file.credits = earned.credits;
+            await save(target, file);
+          }
+          return { status: "ok", earned: earned.earned } as const;
+        });
+      } catch (error) {
+        logUnavailable(target, error);
+        return { status: "unavailable" };
+      }
+    },
+
+    async applyReferralCredit(creditId, bookingId) {
+      const id = creditId.trim();
+      const booking = bookingId.trim();
+      if (!id || !booking) return { status: "invalid" };
+      const target = filePath();
+      if (!(await ensureDurable(target))) {
+        logUnavailable(target);
+        return { status: "unavailable" };
+      }
+      try {
+        return await withLock(target, async () => {
+          const file = await load(target);
+          const at = new Date(now()).toISOString();
+          const applied = applyEarnedCredit(file.credits, id, booking, at);
+          if (applied.result === "applied") {
+            file.credits = applied.credits;
+            await save(target, file);
+          }
+          return { status: applied.result } as const;
         });
       } catch (error) {
         logUnavailable(target, error);

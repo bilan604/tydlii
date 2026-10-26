@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port ${PORT:-3000}",
-    "test": "tsx --test lib/pricing.test.ts lib/waitlist.test.ts lib/waitlist-store.test.ts lib/waitlist-api.test.ts lib/waitlist-notify.test.ts",
+    "test": "tsx --test lib/pricing.test.ts lib/waitlist.test.ts lib/waitlist-store.test.ts lib/waitlist-api.test.ts lib/waitlist-notify.test.ts lib/referral.test.ts lib/welcome-email.test.ts",
     "waitlist:reset": "node scripts/reset-waitlist-email.mjs"
   },
   "engines": {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { quoteHome } from "@/lib/pricing";
+import { normalizeReferralCode, REFERRAL_STORAGE_KEY } from "@/lib/referral";
 import { CleanerPitch } from "./CleanerPitch";
 import { Closer } from "./Closer";
 import { Hero } from "./Hero";
@@ -43,6 +44,16 @@ export function Landing({ accessKey = "" }: { accessKey?: string }) {
     pending.current = null;
     scrollToId(anchor);
   }, [path]);
+
+  useEffect(() => {
+    const code = normalizeReferralCode(new URLSearchParams(window.location.search).get("ref"));
+    if (!code) return;
+    try {
+      sessionStorage.setItem(REFERRAL_STORAGE_KEY, code);
+    } catch {
+      /* private mode can block storage; the query string is still read on submit */
+    }
+  }, []);
 
   return (
     <>
