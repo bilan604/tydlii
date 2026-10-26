@@ -4,6 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { AREAS, type AreaName } from "@/lib/areas";
 import { cad } from "@/lib/format";
 import type { Frequency } from "@/lib/pricing";
+import { SAVE_ERROR, configuredAccessKey, sendWaitlistEmail } from "@/lib/waitlist-notify";
 import type { QuoteSnapshot } from "./QuoteCalculator";
 import { Check } from "./ui";
 
@@ -35,20 +36,20 @@ function joinNotes(lines: string[], note: string): string {
   return parts.join("\n").slice(0, 500);
 }
 
-async function postWaitlist(body: Record<string, unknown>): Promise<string | null> {
+async function postWaitlist(body: Record<string, unknown>, accessKey: string): Promise<string | null> {
   try {
-    const response = await fetch("/api/waitlist", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = (await response.json()) as { ok?: boolean; error?: string };
-    if (!response.ok || !data.ok) {
-      return data.error || "We could not save that just now. Try again in a moment.";
+    const sent = await sendWaitlistEmail(body, configuredAccessKey(accessKey));
+    if (!sent.ok) return sent.error;
+    if (sent.emailed) {
+      void fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).catch(() => undefined);
     }
     return null;
   } catch {
-    return "We could not save that just now. Try again in a moment.";
+    return SAVE_ERROR;
   }
 }
 
@@ -162,7 +163,13 @@ function Success({
   );
 }
 
-export function CustomerWaitlist({ snapshot }: { snapshot: QuoteSnapshot }) {
+export function CustomerWaitlist({
+  snapshot,
+  accessKey = "",
+}: {
+  snapshot: QuoteSnapshot;
+  accessKey?: string;
+}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [postal, setPostal] = useState("");
@@ -199,17 +206,20 @@ export function CustomerWaitlist({ snapshot }: { snapshot: QuoteSnapshot }) {
 
     const neighbourhoods: AreaName[] = hood ? [hood] : ["Other"];
     setStatus("sending");
-    const failure = await postWaitlist({
-      type: "customer",
-      name,
-      email,
-      phone: "",
-      notes: joinNotes([postal.trim() ? `Postal: ${postal.trim().toUpperCase()}` : ""], note),
-      consent: true,
-      website,
-      neighbourhoods,
-      quote: snapshot.quote,
-    });
+    const failure = await postWaitlist(
+      {
+        type: "customer",
+        name,
+        email,
+        phone: "",
+        notes: joinNotes([postal.trim() ? `Postal: ${postal.trim().toUpperCase()}` : ""], note),
+        consent: true,
+        website,
+        neighbourhoods,
+        quote: snapshot.quote,
+      },
+      accessKey,
+    );
     if (failure) {
       setStatus("error");
       setError(failure);
@@ -328,7 +338,7 @@ export function CustomerWaitlist({ snapshot }: { snapshot: QuoteSnapshot }) {
   );
 }
 
-export function CleanerWaitlist() {
+export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -380,20 +390,23 @@ export function CleanerWaitlist() {
     }
 
     setStatus("sending");
-    const failure = await postWaitlist({
-      type: "cleaner",
-      name,
-      email,
-      phone,
-      notes: joinNotes(
-        [experience ? `Experience: ${experience}` : "", ride ? `Getting to jobs: ${ride}` : ""],
-        note,
-      ),
-      consent: true,
-      website,
-      neighbourhoods: hoods,
-      quote: null,
-    });
+    const failure = await postWaitlist(
+      {
+        type: "cleaner",
+        name,
+        email,
+        phone,
+        notes: joinNotes(
+          [experience ? `Experience: ${experience}` : "", ride ? `Getting to jobs: ${ride}` : ""],
+          note,
+        ),
+        consent: true,
+        website,
+        neighbourhoods: hoods,
+        quote: null,
+      },
+      accessKey,
+    );
     if (failure) {
       setStatus("error");
       setError(failure);

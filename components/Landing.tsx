@@ -17,7 +17,7 @@ function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior, block: "start" });
 }
 
-export function Landing() {
+export function Landing({ accessKey = "" }: { accessKey?: string }) {
   const [path, setPath] = useState<Path>("customer");
   const [snapshot, setSnapshot] = useState<QuoteSnapshot>(() => ({
     quote: quoteHome(DEFAULT_QUOTE_INPUT),
@@ -79,12 +79,12 @@ export function Landing() {
         <div role="tabpanel" id="customer-path" aria-labelledby="tab-customer">
           <QuoteCalculator onChange={setSnapshot} />
           <HowItWorks />
-          <CustomerWaitlist snapshot={snapshot} />
+          <CustomerWaitlist snapshot={snapshot} accessKey={accessKey} />
         </div>
       ) : (
         <div role="tabpanel" id="cleaner-path" aria-labelledby="tab-cleaner">
           <CleanerPitch />
-          <CleanerWaitlist />
+          <CleanerWaitlist accessKey={accessKey} />
         </div>
       )}
       <Closer />

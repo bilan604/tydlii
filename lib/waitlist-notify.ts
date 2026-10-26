@@ -1,5 +1,5 @@
 import { isStoredQuote, summarizeQuote } from "./quote-summary";
-import type { WaitlistSignup } from "./waitlist";
+import { parseWaitlist, type WaitlistSignup } from "./waitlist";
 
 /** Web3Forms JSON endpoint. Do not send a `redirect` field; that turns the response into a 303. */
 export const WEB3FORMS_ENDPOINT = "https://api.web3forms.com/submit";
@@ -15,11 +15,20 @@ export type WaitlistRecord = WaitlistSignup & {
 
 export type DeliverResult = { ok: true } | { ok: false; status: number; error: string };
 
-export type WaitlistEnv = {
-  WAITLIST_WEB3FORMS_ACCESS_KEY?: string;
-  WAITLIST_WEBHOOK_URL?: string;
-  NODE_ENV?: string;
-};
+export type SendResult = { ok: true; emailed: boolean } | { ok: false; error: string };
+
+/**
+ * Key the browser sends to Web3Forms. The public var is inlined into the client
+ * bundle at build time. `serverFallback` is only for the server page, which can
+ * still read WAITLIST_WEB3FORMS_ACCESS_KEY and pass the value down.
+ */
+export function configuredAccessKey(serverFallback?: string): string {
+  return (
+    process.env.NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY?.trim() ||
+    serverFallback?.trim() ||
+    ""
+  );
+}
 
 /**
  * One-line quote for the notification email.
@@ -91,10 +100,10 @@ async function readWeb3FormsResult(response: Response): Promise<Web3FormsResult>
   }
 }
 
-async function sendWeb3Forms(
+export async function submitWeb3Forms(
   record: WaitlistRecord,
   accessKey: string,
-  fetchImpl: typeof fetch,
+  fetchImpl: typeof fetch = fetch,
 ): Promise<DeliverResult> {
   try {
     const response = await fetchImpl(WEB3FORMS_ENDPOINT, {
@@ -163,34 +172,43 @@ async function forwardWebhook(
 }
 
 /**
- * Email the signup via Web3Forms, then best-effort forward to WAITLIST_WEBHOOK_URL.
- * With no access key outside production, the signup is logged and accepted so local dev still works.
- * In production a missing key is logged and the request fails, so the form does not claim success.
+ * Browser path. Validates, skips the honeypot, and POSTs to Web3Forms.
+ * This does not call our API. Render's outbound IP is blocked on the free plan.
  */
-export async function deliverWaitlist(
-  record: WaitlistRecord,
-  env: WaitlistEnv = {
-    WAITLIST_WEB3FORMS_ACCESS_KEY: process.env.WAITLIST_WEB3FORMS_ACCESS_KEY,
-    WAITLIST_WEBHOOK_URL: process.env.WAITLIST_WEBHOOK_URL,
-    NODE_ENV: process.env.NODE_ENV,
-  },
+export async function sendWaitlistEmail(
+  input: unknown,
+  accessKey: string | undefined,
   fetchImpl: typeof fetch = fetch,
-): Promise<DeliverResult> {
-  const accessKey = env.WAITLIST_WEB3FORMS_ACCESS_KEY?.trim() ?? "";
-  if (!accessKey) {
-    console.error(
-      "[tydlii waitlist] WAITLIST_WEB3FORMS_ACCESS_KEY is not set; signup logged only",
-    );
-    console.log("[tydlii waitlist] stub accepted", JSON.stringify(record));
-    if (env.NODE_ENV === "production") {
-      return { ok: false, status: 500, error: SAVE_ERROR };
-    }
-    await forwardWebhook(record, env.WAITLIST_WEBHOOK_URL, fetchImpl);
-    return { ok: true };
+): Promise<SendResult> {
+  const parsed = parseWaitlist(input);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+  if (parsed.spam) return { ok: true, emailed: false };
+
+  const key = accessKey?.trim() ?? "";
+  if (!key) {
+    console.error("[tydlii waitlist] Web3Forms access key is not set");
+    return { ok: false, error: SAVE_ERROR };
   }
 
-  const sent = await sendWeb3Forms(record, accessKey, fetchImpl);
-  if (!sent.ok) return sent;
-  await forwardWebhook(record, env.WAITLIST_WEBHOOK_URL, fetchImpl);
+  const record: WaitlistRecord = {
+    ...parsed.value,
+    createdAt: new Date().toISOString(),
+    source: "tydlii.com",
+  };
+  const sent = await submitWeb3Forms(record, key, fetchImpl);
+  if (!sent.ok) return { ok: false, error: sent.error };
+  return { ok: true, emailed: true };
+}
+
+/**
+ * Server log plus optional webhook. Does not call Web3Forms and does not fail the request.
+ */
+export async function recordWaitlist(
+  record: WaitlistRecord,
+  webhookUrl: string | undefined,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: true }> {
+  console.log("[tydlii waitlist] accepted", JSON.stringify(record));
+  await forwardWebhook(record, webhookUrl, fetchImpl);
   return { ok: true };
 }

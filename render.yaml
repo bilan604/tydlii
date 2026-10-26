@@ -12,10 +12,13 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # Web3Forms access key for teamtydlii@gmail.com. Set in the dashboard. Do not commit it.
-      # When unset in production, the route logs the signup and returns 500.
+      # Public Web3Forms key. Inlined into the client bundle when the service builds.
+      # Set this to the teamtydlii@gmail.com access key, then redeploy. Do not commit it.
+      - key: NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY
+        sync: false
+      # Optional fallback if the public var is unset. The server does not call Web3Forms.
       - key: WAITLIST_WEB3FORMS_ACCESS_KEY
         sync: false
-      # Optional. Best-effort JSON forward after Web3Forms accepts the signup.
+      # Optional. Best-effort JSON forward from POST /api/waitlist. Not used for email.
       - key: WAITLIST_WEBHOOK_URL
         sync: false
