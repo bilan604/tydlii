@@ -6,6 +6,10 @@ import { SITE } from "@/lib/site";
 import { Footer } from "@/components/Footer";
 import "./globals.css";
 
+// Render each document on request so Next does not emit s-maxage=31536000.
+// Phones were keeping that cached HTML and its old waitlist bundle.
+export const dynamic = "force-dynamic";
+
 const outfit = Outfit({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
