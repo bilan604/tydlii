@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CopyReferral } from "@/components/CopyReferral";
+import { Wordmark } from "@/components/Wordmark";
 import { REFERRAL_CREDIT_PROMISE, normalizeReferralCode, referralShareUrl } from "@/lib/referral";
 import { waitlistStore } from "@/lib/waitlist-store";
 
@@ -22,31 +23,42 @@ export default async function ReferPage({
   const firstName = found.status === "found" ? found.name.trim().split(/\s+/)[0] : "";
 
   return (
-    <main className="shell refer">
-      <p className="eyebrow">Referral</p>
-      {found.status === "found" ? (
-        <>
-          <h1>{firstName ? `${firstName}, your referral link.` : "Your referral link."}</h1>
-          <p className="refer-lead">
-            Share this link with a friend or family member. {REFERRAL_CREDIT_PROMISE} It is account credit, not
-            cash, and it cannot be used before that clean.
-          </p>
-          <CopyReferral url={shareUrl} />
-        </>
-      ) : (
-        <>
-          <h1>{found.status === "unavailable" ? "Referral links are unavailable right now." : "That referral link isn't active."}</h1>
-          <p className="refer-lead">
-            {found.status === "unavailable"
-              ? "Try the link from your welcome email again in a moment."
-              : "Open the welcome email and tap Get your referral link."}{" "}
-            {REFERRAL_CREDIT_PROMISE}
-          </p>
-          <a className="btn btn-navy" href="/">
-            Back to Tydlii
-          </a>
-        </>
-      )}
-    </main>
+    <>
+      <header className="refer-top shell">
+        <a href="/" aria-label="Tydlii">
+          <Wordmark className="refer-logo" />
+        </a>
+      </header>
+      <main className="refer">
+        <p className="eyebrow">Referral</p>
+        {found.status === "found" ? (
+          <>
+            <h1>{firstName ? `${firstName}, your referral link.` : "Your referral link."}</h1>
+            <p className="refer-lead">
+              Share this link with a friend or family member. <strong>{REFERRAL_CREDIT_PROMISE}</strong> It is account
+              credit, not cash, and it cannot be used before that clean.
+            </p>
+            <CopyReferral url={shareUrl} />
+          </>
+        ) : (
+          <>
+            <h1>
+              {found.status === "unavailable"
+                ? "Referral links are unavailable right now."
+                : "That referral link isn't active."}
+            </h1>
+            <p className="refer-lead">
+              {found.status === "unavailable"
+                ? "Try the link from your welcome email again in a moment."
+                : "Open the welcome email and tap Get your referral link."}{" "}
+              <strong>{REFERRAL_CREDIT_PROMISE}</strong>
+            </p>
+            <a className="btn btn-navy" href="/">
+              Back to Tydlii
+            </a>
+          </>
+        )}
+      </main>
+    </>
   );
 }
