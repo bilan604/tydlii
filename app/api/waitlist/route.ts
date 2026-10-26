@@ -1,7 +1,18 @@
+import { deliverWaitlist } from "@/lib/waitlist-notify";
 import { parseWaitlist } from "@/lib/waitlist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * Env (set on Render; never commit secrets):
+ * - WAITLIST_WEB3FORMS_ACCESS_KEY — Web3Forms key for teamtydlii@gmail.com.
+ *   When set, a non-spam signup returns ok only after Web3Forms accepts it.
+ *   When unset in production, the signup is logged and the route returns 500.
+ *   When unset outside production, the signup is logged and the route returns 200.
+ * - WAITLIST_WEBHOOK_URL — optional http(s) JSON forward after that accept.
+ *   Failures are logged only. Do not point this at a Google Apps Script web app.
+ */
 
 function json(body: { ok: boolean; error?: string }, status = 200) {
   return Response.json(body, { status });
@@ -40,55 +51,9 @@ export async function POST(request: Request) {
     source: "tydlii.com",
   };
 
-  const webhook = process.env.WAITLIST_WEBHOOK_URL?.trim();
-  if (!webhook) {
-    console.log("[tydlii waitlist] stub accepted", JSON.stringify(payload));
-    return json({ ok: true });
+  const delivered = await deliverWaitlist(payload);
+  if (!delivered.ok) {
+    return json({ ok: false, error: delivered.error }, delivered.status);
   }
-
-  let url: URL;
-  try {
-    url = new URL(webhook);
-  } catch {
-    console.error("[tydlii waitlist] WAITLIST_WEBHOOK_URL is not a valid URL");
-    return json(
-      { ok: false, error: "We could not save that just now. Try again in a moment." },
-      500,
-    );
-  }
-
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    console.error("[tydlii waitlist] WAITLIST_WEBHOOK_URL must be http or https");
-    return json(
-      { ok: false, error: "We could not save that just now. Try again in a moment." },
-      500,
-    );
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) {
-      console.error("[tydlii waitlist] webhook responded", response.status);
-      return json(
-        { ok: false, error: "We could not save that just now. Try again in a moment." },
-        502,
-      );
-    }
-  } catch {
-    console.error("[tydlii waitlist] webhook request failed");
-    return json(
-      { ok: false, error: "We could not save that just now. Try again in a moment." },
-      502,
-    );
-  }
-
   return json({ ok: true });
 }
