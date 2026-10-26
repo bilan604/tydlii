@@ -110,9 +110,23 @@ Implemented in `lib/pricing.ts` and covered by `lib/pricing.test.ts`.
 | E | 1,300–1,599 sq ft | $269 |
 | F | 1,600–1,999 sq ft | $299 |
 | G | 2,000–2,499 sq ft | $339 |
-| H | 2,500+ sq ft | Custom, no guessed price |
+| H | 2,500–2,999 sq ft | $389 |
+| I | 3,000–3,499 sq ft | $439 |
+| J | 3,500–3,999 sq ft | $489 |
+| K | 4,000–4,499 sq ft | $539 |
+| L | 4,500–4,999 sq ft | $589 |
+| M | 5,000–5,999 sq ft | $639 |
+| N | 6,000–6,999 sq ft | $739 |
+| O | 7,000–7,999 sq ft | $839 |
+| P | 8,000–8,999 sq ft | $939 |
+| Q | 9,000–9,999 sq ft | $1,039 |
+| R | 10,000–11,999 sq ft | $1,139 |
+| S | 12,000–13,999 sq ft | $1,339 |
+| T | 14,000–15,999 sq ft | $1,539 |
+| U | 16,000–17,999 sq ft | $1,739 |
+| V | 18,000–20,000 sq ft | $1,939 |
 
-The dollar bases, add-ons, and multipliers are the brief. The square-foot labels are the public names for bands A–H. Edit `SQFT_BANDS` if the cut points change.
+Bands A–C are the published small-home prices. From 1,000 sq ft up, the base is $139 + $0.10 × the bottom of the band. That is the brief for D–G, and the same line prices every larger band through 20,000 sq ft (an 8,500 sq ft home is band P). Edit `SQFT_BANDS` if the cut points change.
 
 - +$20 per bedroom after the first (a studio adds nothing and does not subtract)
 - +$30 per full bath after the first

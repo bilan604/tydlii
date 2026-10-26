@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fromPrice, quoteHome, to9, withHst, type QuoteInput } from "./pricing";
+import { SQFT_BANDS, fromPrice, quoteHome, to9, withHst, type QuoteInput } from "./pricing";
 
 const base: QuoteInput = {
   band: "A",
@@ -110,9 +110,82 @@ test("extras are added before multipliers, and a studio does not go negative", (
   assert.equal(studio.subtotal, 165);
 });
 
-test("band H is a custom quote with no price", () => {
-  const quote = quoteHome({ ...base, band: "H" });
-  assert.deepEqual(quote, { custom: true, band: "H", label: "2,500+ sq ft" });
+test("bands A–G keep the published bases", () => {
+  const published: Record<string, number> = {
+    A: 165,
+    B: 189,
+    C: 209,
+    D: 239,
+    E: 269,
+    F: 299,
+    G: 339,
+  };
+  for (const [id, basePrice] of Object.entries(published)) {
+    assert.equal(SQFT_BANDS.find((band) => band.id === id)?.base, basePrice);
+  }
+});
+
+test("from 1,000 sq ft up, each base is $139 plus 10 cents per sq ft of the band floor", () => {
+  const floor: Record<string, number> = {
+    D: 1_000,
+    E: 1_300,
+    F: 1_600,
+    G: 2_000,
+    H: 2_500,
+    I: 3_000,
+    J: 3_500,
+    K: 4_000,
+    L: 4_500,
+    M: 5_000,
+    N: 6_000,
+    O: 7_000,
+    P: 8_000,
+    Q: 9_000,
+    R: 10_000,
+    S: 12_000,
+    T: 14_000,
+    U: 16_000,
+    V: 18_000,
+  };
+  for (const band of SQFT_BANDS) {
+    const start = floor[band.id];
+    if (start == null) continue;
+    assert.equal(band.base, 139 + start / 10, band.label);
+  }
+  assert.equal(SQFT_BANDS.at(-1)?.label, "18,000–20,000 sq ft");
+});
+
+test("an 8,500 sq ft home and a 20,000 sq ft home both get a real quote", () => {
+  const eight = quoteHome({ ...base, band: "P" });
+  assert.equal(eight.custom, false);
+  if (eight.custom) return;
+  assert.equal(eight.label, "8,000–8,999 sq ft");
+  assert.equal(eight.base, 939);
+  assert.equal(eight.plan?.beforeHst, 939);
+  assert.equal(eight.plan?.withHst, 1061.07);
+  assert.equal(eight.first.beforeHst, 1149);
+  assert.equal(eight.first.withHst, 1298.37);
+
+  const estate = quoteHome({ ...base, band: "V" });
+  assert.equal(estate.custom, false);
+  if (estate.custom) return;
+  assert.equal(estate.label, "18,000–20,000 sq ft");
+  assert.equal(estate.base, 1939);
+  assert.equal(estate.plan?.beforeHst, 1939);
+  assert.equal(estate.plan?.withHst, 2191.07);
+  assert.equal(estate.first.beforeHst, 2369);
+  assert.equal(estate.first.withHst, 2676.97);
+});
+
+test("every selectable band produces a non-empty plan and first-visit price", () => {
+  for (const band of SQFT_BANDS) {
+    const quote = quoteHome({ ...base, band: band.id });
+    assert.equal(quote.custom, false, band.label);
+    if (quote.custom) continue;
+    assert.equal(quote.base, band.base);
+    assert.ok(quote.plan && quote.plan.beforeHst > 0, band.label);
+    assert.ok(quote.first.beforeHst > 0, band.label);
+  }
 });
 
 test("homepage from-price is the weekly band A visit", () => {
