@@ -13,6 +13,16 @@ export type WaitlistSignup = {
   quote: unknown;
 };
 
+/**
+ * Hidden trap field sent with the signup.
+ * Must not be named or labeled like a website, URL, or homepage: mobile Safari
+ * and Chrome autofill those from the contact card.
+ */
+export const HONEYPOT_FIELD = "tyd_check";
+
+/** Older clients and bots still send this name. It is a trap, not a signup field. */
+const LEGACY_HONEYPOT_FIELDS = ["website"] as const;
+
 export type ParseResult =
   | { ok: true; spam: true }
   | { ok: true; spam: false; value: WaitlistSignup }
@@ -22,6 +32,14 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function honeypotTripped(body: Record<string, unknown>): boolean {
+  for (const key of [HONEYPOT_FIELD, ...LEGACY_HONEYPOT_FIELDS]) {
+    const value = body[key];
+    if (typeof value === "string" && value.trim() !== "") return true;
+  }
+  return false;
 }
 
 /**
@@ -34,9 +52,7 @@ export function parseWaitlist(input: unknown): ParseResult {
     return { ok: false, error: "That signup could not be read." };
   }
   const body = input as Record<string, unknown>;
-  if (typeof body.website === "string" && body.website.trim() !== "") {
-    return { ok: true, spam: true };
-  }
+  if (honeypotTripped(body)) return { ok: true, spam: true };
 
   const type = body.type;
   if (type !== "customer" && type !== "cleaner") {

@@ -3,10 +3,12 @@ import { test } from "node:test";
 import { quoteHome } from "./pricing";
 import { summarizeQuote } from "./quote-summary";
 import {
+  SAVE_ERROR,
   WEB3FORMS_ENDPOINT,
   configuredAccessKey,
   quoteSummary,
   recordWaitlist,
+  deliverWaitlist,
   sendWaitlistEmail,
   submitWeb3Forms,
   waitlistMessage,
@@ -85,31 +87,33 @@ test("a cleaner signup with no quote still lists every field", () => {
   assert.match(message, /^quote: $/m);
 });
 
-test("the browser submit posts the Web3Forms payload and not our API", async () => {
-  const { calls, fetchImpl } = mockFetch(async () =>
-    jsonResponse({ success: true, message: "Email sent successfully!" }),
-  );
+const signup = {
+  type: customer.type,
+  name: customer.name,
+  email: customer.email,
+  phone: customer.phone,
+  neighbourhoods: customer.neighbourhoods,
+  notes: customer.notes,
+  consent: true,
+  quote: customer.quote,
+};
 
-  const result = await sendWaitlistEmail(
-    {
-      type: customer.type,
-      name: customer.name,
-      email: customer.email,
-      phone: customer.phone,
-      neighbourhoods: customer.neighbourhoods,
-      notes: customer.notes,
-      consent: true,
-      quote: customer.quote,
-    },
-    "test-access-key",
-    fetchImpl,
-  );
+test("the browser submit reserves, posts Web3Forms, then confirms", async () => {
+  const { calls, fetchImpl } = mockFetch(async (url) => {
+    if (url === "/api/waitlist") return jsonResponse({ ok: true, claimed: true, claimId: "claim-1" });
+    if (url === "/api/waitlist/confirm") return jsonResponse({ ok: true });
+    if (url === WEB3FORMS_ENDPOINT) return jsonResponse({ success: true, message: "Email sent successfully!" });
+    return jsonResponse({ ok: false }, 500);
+  });
 
-  assert.deepEqual(result, { ok: true, emailed: true });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, WEB3FORMS_ENDPOINT);
-  assert.equal(calls[0].init?.method, "POST");
-  const mailed = JSON.parse(String(calls[0].init?.body)) as Record<string, string>;
+  const result = await deliverWaitlist(signup, "test-access-key", fetchImpl);
+
+  assert.deepEqual(result, { status: "sent" });
+  assert.deepEqual(
+    calls.map((call) => call.url),
+    ["/api/waitlist", WEB3FORMS_ENDPOINT, "/api/waitlist/confirm"],
+  );
+  const mailed = JSON.parse(String(calls[1].init?.body)) as Record<string, string>;
   assert.equal(mailed.access_key, "test-access-key");
   assert.equal(mailed.subject, "[Tydlii waitlist] customer — mina@example.com");
   assert.equal(mailed.from_name, "Mina Chen");
@@ -117,7 +121,22 @@ test("the browser submit posts the Web3Forms payload and not our API", async () 
   assert.match(mailed.message, /^type: customer$/m);
   assert.match(mailed.message, /^source: tydlii.com$/m);
   assert.match(mailed.message, /quote: /);
-  assert.equal(calls.some((call) => call.url.includes("/api/waitlist")), false);
+  const confirmed = JSON.parse(String(calls[2].init?.body)) as { email: string; claimId: string };
+  assert.equal(confirmed.email, customer.email);
+  assert.equal(confirmed.claimId, "claim-1");
+});
+
+test("a failed confirm after Web3Forms accepts still counts as sent and is not released", async () => {
+  const { calls, fetchImpl } = mockFetch(async (url) => {
+    if (url === "/api/waitlist") return jsonResponse({ ok: true, claimed: true, claimId: "claim-1" });
+    if (url === WEB3FORMS_ENDPOINT) return jsonResponse({ success: true });
+    return jsonResponse({ ok: false }, 500);
+  });
+
+  const result = await deliverWaitlist(signup, "test-access-key", fetchImpl);
+  assert.deepEqual(result, { status: "sent" });
+  assert.equal(calls.filter((call) => call.url === "/api/waitlist/confirm").length, 2);
+  assert.equal(calls.some((call) => call.url === "/api/waitlist/release"), false);
 });
 
 test("submitWeb3Forms sends the full field list", async () => {
@@ -148,22 +167,60 @@ test("Web3Forms success:false does not count as sent", async () => {
   assert.equal(calls[0].url, WEB3FORMS_ENDPOINT);
 });
 
-test("a honeypot is not emailed", async () => {
+test("a honeypot is not emailed and is not a success", async () => {
   const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ success: true }));
-  const result = await sendWaitlistEmail(
+  const result = await deliverWaitlist(
     {
-      type: customer.type,
-      name: customer.name,
-      email: customer.email,
-      neighbourhoods: customer.neighbourhoods,
-      consent: true,
-      website: "https://spam.example",
+      ...signup,
+      tyd_check: "https://spam.example",
     },
     "test-access-key",
     fetchImpl,
   );
-  assert.deepEqual(result, { ok: true, emailed: false });
+  assert.deepEqual(result, { status: "error", error: SAVE_ERROR });
   assert.equal(calls.length, 0);
+
+  const legacy = await sendWaitlistEmail(
+    { ...signup, website: "https://spam.example" },
+    "test-access-key",
+    fetchImpl,
+  );
+  assert.equal(legacy.ok, false);
+  assert.equal(calls.length, 0);
+});
+
+test("a duplicate is not emailed", async () => {
+  const { calls, fetchImpl } = mockFetch(async (url) => {
+    if (url === "/api/waitlist") return jsonResponse({ ok: true, duplicate: true });
+    return jsonResponse({ success: true });
+  });
+  const result = await deliverWaitlist(signup, "test-access-key", fetchImpl);
+  assert.deepEqual(result, { status: "duplicate" });
+  assert.deepEqual(
+    calls.map((call) => call.url),
+    ["/api/waitlist"],
+  );
+});
+
+test("Web3Forms failure releases the reserve and is not a success", async () => {
+  const { calls, fetchImpl } = mockFetch(async (url) => {
+    if (url === "/api/waitlist") return jsonResponse({ ok: true, claimed: true, claimId: "claim-1" });
+    if (url === "/api/waitlist/release") return jsonResponse({ ok: true });
+    return jsonResponse({ success: false, message: "nope" }, 422);
+  });
+  const result = await deliverWaitlist(signup, "test-access-key", fetchImpl);
+  assert.equal(result.status, "error");
+  assert.deepEqual(
+    calls.map((call) => call.url),
+    ["/api/waitlist", WEB3FORMS_ENDPOINT, "/api/waitlist/release"],
+  );
+});
+
+test("a reserve that fails does not email", async () => {
+  const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ ok: false, error: "down" }, 503));
+  const result = await deliverWaitlist(signup, "test-access-key", fetchImpl);
+  assert.deepEqual(result, { status: "error", error: "down" });
+  assert.equal(calls.some((call) => call.url === WEB3FORMS_ENDPOINT), false);
 });
 
 test("a missing access key does not post", async () => {
