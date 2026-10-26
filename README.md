@@ -46,14 +46,21 @@ npm start
 - Customer payloads include `quote`, the instant-quote object from the calculator.
 - A non-empty `website` field is a honeypot. The route returns 200 and does not store it.
 
-### `WAITLIST_WEBHOOK_URL`
+A non-spam signup is emailed through [Web3Forms](https://web3forms.com) to the inbox tied to the access key (`teamtydlii@gmail.com`). When that key is set, the form returns `{ ok: true }` only after Web3Forms accepts the email. The message lists type, name, email, phone, neighbourhoods, notes, quote summary, `createdAt`, and `source: "tydlii.com"`. Reply-to is the signup email.
+
+### `WAITLIST_WEB3FORMS_ACCESS_KEY`
 
 | Value | Behaviour |
 | --- | --- |
-| Unset or blank | The server logs the JSON and returns **200**. This is the stub until a receiver is wired. |
-| `http` or `https` URL | The server forwards the JSON with `createdAt` and `source: "tydlii.com"`. A failed forward returns 502. |
+| Unset, and not production | The server logs the JSON and returns **200**. Signups are not emailed. This is local dev. |
+| Unset, production | The server logs the JSON and returns **500**. The form does not say the signup was saved. |
+| Access key | `POST https://api.web3forms.com/submit` with `access_key`, `subject`, `from_name` (the person's name), `replyto`, and a text `message`. A failed submit returns 502. |
 
-Set the variable in `.env.local` for local forwarding, or in the Render dashboard for production. Do not commit a real URL. Signups in stub mode are printed in the server logs, so set a webhook before launch if those addresses should not sit in Render logs.
+Set this in `.env.local` to try a real send, or in the Render dashboard for production. Do not commit the key. Web3Forms documents server-side submits as a paid feature that may need the server IP allowlisted. If a production signup returns 502 after the key is set, check that in the Web3Forms dashboard. The key stays on the server and is not sent to the browser.
+
+### `WAITLIST_WEBHOOK_URL`
+
+Optional. After Web3Forms accepts the signup (or after the local log stub, when no key is set outside production), the server also POSTs the same JSON to this `http` or `https` URL. A bad URL, a redirect, or a non-2xx response is logged and does **not** fail the signup. Leave it empty unless you want that extra copy. Do not point it at a Google Apps Script web app: `/exec` returns 302 and the follow-up request fails.
 
 Example:
 
@@ -91,7 +98,7 @@ The dollar bases, add-ons, and multipliers are the brief. The square-foot labels
 
 ## Deploy on Render
 
-This is a Node web service, not a static export, because `/api/waitlist` has to log or forward signups.
+This is a Node web service, not a static export, because `/api/waitlist` has to email signups.
 
 [`render.yaml`](render.yaml) is a Render Blueprint:
 
@@ -105,10 +112,10 @@ This is a Node web service, not a static export, because `/api/waitlist` has to 
 1. Push this repo to GitHub.
 2. In the [Render dashboard](https://dashboard.render.com), choose **New → Blueprint** and select the repo. Render reads `render.yaml`.
    Or create a **Web Service** manually with the build and start commands above, and the root directory as the repo root.
-3. Add `WAITLIST_WEBHOOK_URL` if you already have a receiver. Leave it empty to use the log stub.
+3. Set `WAITLIST_WEB3FORMS_ACCESS_KEY` to the Web3Forms access key created for `teamtydlii@gmail.com`. That is the production inbox. Leave `WAITLIST_WEBHOOK_URL` empty unless you also want a best-effort JSON copy somewhere else.
 4. Deploy. Note the service hostname, for example `tydlii.onrender.com`.
 
-After the first deploy, open the service URL and confirm the homepage, a quote, and a cleaner signup that selects two neighbourhoods. The stub line appears in the Render logs as `[tydlii waitlist] stub accepted`.
+Set `WAITLIST_WEB3FORMS_ACCESS_KEY` and redeploy before relying on the form. Until that key is present, production logs `[tydlii waitlist] stub accepted` and the form returns an error. After it is set, a signup should arrive at `teamtydlii@gmail.com`.
 
 ## Cloudflare DNS for tydlii.com
 

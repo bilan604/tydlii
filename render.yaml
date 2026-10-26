@@ -12,6 +12,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # Leave blank until a receiver exists. The route then logs and returns 200.
+      # Web3Forms access key for teamtydlii@gmail.com. Set in the dashboard. Do not commit it.
+      # When unset in production, the route logs the signup and returns 500.
+      - key: WAITLIST_WEB3FORMS_ACCESS_KEY
+        sync: false
+      # Optional. Best-effort JSON forward after Web3Forms accepts the signup.
       - key: WAITLIST_WEBHOOK_URL
         sync: false
