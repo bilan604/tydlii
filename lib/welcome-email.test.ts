@@ -31,6 +31,38 @@ test("the welcome matches the locked creative and the credit rules", () => {
   assert.match(message.html, />Get your referral link</);
   assert.match(message.html, /#070707/);
   assert.match(message.html, /#5c9396/);
+  const header = message.html.slice(0, message.html.indexOf("cid:tydlii-welcome-hero"));
+  assert.match(header, /cid:tydlii-wordmark/);
+  assert.match(header, /background-color:#070707/);
+  assert.match(header, /linear-gradient\(#070707,#070707\)/);
+  assert.equal((header.match(/bgcolor="#070707"/g) || []).length, 3);
+  assert.match(header, /class="header-ink"/);
+  assert.match(message.html, /name="color-scheme" content="light dark"/);
+  assert.match(message.html, /name="supported-color-schemes" content="light dark"/);
+  assert.match(message.html, /prefers-color-scheme: dark/);
+  assert.match(message.html, /\[data-ogsc\] \.header-ink/);
+  assert.match(message.html, /u \+ \.body \.header-ink/);
+  const pillTags = [...message.html.matchAll(/<td class="feature-pill"[^>]*>/g)].map((match) => match[0]);
+  assert.equal(pillTags.length, 3);
+  assert.equal(pillTags[0], pillTags[1]);
+  assert.equal(pillTags[1], pillTags[2]);
+  assert.match(pillTags[0], /width="32%"/);
+  assert.match(pillTags[0], /width:32%/);
+  assert.match(pillTags[0], /height="76"/);
+  assert.match(pillTags[0], /min-height:76px/);
+  assert.match(pillTags[0], /valign="middle"/);
+  assert.match(pillTags[0], /bgcolor="#ffffff"/);
+  assert.match(pillTags[0], /background-color:#ffffff/);
+  assert.match(pillTags[0], /border:1px solid #ffffff/);
+  assert.match(pillTags[0], /padding:16px 8px/);
+  assert.match(pillTags[0], /border-radius:16px/);
+  assert.equal((message.html.match(/class="feature-gap" width="2%"/g) || []).length, 2);
+  assert.match(
+    message.html,
+    /<img src="cid:tydlii-welcome-hero" width="600" alt="A customer with her dog on the couch after a Tydlii clean"/,
+  );
+  assert.match(message.html, /You get \$25\.<br>Your friend gets \$25\./);
+  assert.match(message.html, /background:#e5f3f4;border-radius:28px;/);
   assert.doesNotMatch(message.html, /neighbourhood/i);
   assert.doesNotMatch(message.html, /\$25 off/);
   assert.ok(message.text.includes(REFERRAL_CREDIT_PROMISE));
