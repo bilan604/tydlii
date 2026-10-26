@@ -189,6 +189,19 @@ test("a honeypot is not emailed and is not a success", async () => {
   assert.equal(calls.length, 0);
 });
 
+test("a customer ref code is included on the team email", async () => {
+  const { calls, fetchImpl } = mockFetch(async (url) => {
+    if (url === "/api/waitlist") return jsonResponse({ ok: true, claimed: true, claimId: "claim-1" });
+    if (url === "/api/waitlist/confirm") return jsonResponse({ ok: true });
+    if (url === WEB3FORMS_ENDPOINT) return jsonResponse({ success: true });
+    return jsonResponse({ ok: false }, 500);
+  });
+  const result = await deliverWaitlist({ ...signup, ref: "k7m2pqrs" }, "test-access-key", fetchImpl);
+  assert.deepEqual(result, { status: "sent" });
+  const mailed = JSON.parse(String(calls[1].init?.body)) as Record<string, string>;
+  assert.match(mailed.message, /^referredByCode: k7m2pqrs$/m);
+});
+
 test("a duplicate is not emailed", async () => {
   const { calls, fetchImpl } = mockFetch(async (url) => {
     if (url === "/api/waitlist") return jsonResponse({ ok: true, duplicate: true });

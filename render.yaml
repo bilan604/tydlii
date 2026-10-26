@@ -34,3 +34,9 @@ services:
       # Optional. Comma-separated emails that joined before the file existed.
       - key: WAITLIST_SEED_EMAILS
         sync: false
+      # Optional. Customer welcome email via Resend. Leave unset and signups still succeed.
+      # Verify tydlii.com in Resend, then set both and redeploy (runtime env; no client rebuild).
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false

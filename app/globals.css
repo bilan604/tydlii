@@ -1076,6 +1076,31 @@ main.shell {
   }
 }
 
+.refer {
+  padding: clamp(48px, 8vw, 96px) 0 72px;
+  max-width: 640px;
+}
+
+.refer h1 {
+  font-size: clamp(40px, 6vw, 64px);
+  margin: 8px 0 16px;
+}
+
+.refer-lead {
+  font-size: 18px;
+  margin-bottom: 28px;
+}
+
+.refer-actions {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+
+.refer-actions .field {
+  width: 100%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

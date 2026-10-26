@@ -1,6 +1,8 @@
-import { recordWaitlist, SAVE_ERROR } from "./waitlist-notify";
+import { referralCodeFromInput } from "./referral";
 import { parseWaitlist } from "./waitlist";
 import { waitlistStore, type WaitlistStore } from "./waitlist-store";
+import { recordWaitlist, SAVE_ERROR } from "./waitlist-notify";
+import { sendCustomerWelcome, type WelcomeSender } from "./welcome-email";
 
 export type WaitlistHttpResult = {
   status: number;
@@ -54,17 +56,24 @@ export async function claimWaitlistRequest(
   if (!parsed.ok) return { status: 400, body: { ok: false, error: parsed.error } };
   if (parsed.spam) return { status: 200, body: { ok: true, spam: true } };
 
-  const claim = await store.claim(parsed.value);
+  const claim = await store.claim(parsed.value, {
+    referralCode: referralCodeFromInput(input),
+  });
   if (claim.status === "duplicate") return { status: 200, body: { ok: true, duplicate: true } };
   if (claim.status === "unavailable") return { status: 503, body: { ok: false, error: SAVE_ERROR } };
   return { status: 200, body: { ok: true, claimed: true, claimId: claim.claimId } };
 }
 
-/** Keep a reserve after Web3Forms has accepted the signup, then log it. */
+/**
+ * Keep a reserve after Web3Forms has accepted the signup, then log it.
+ * A customer welcome is sent after the row is saved. A mail failure does not
+ * change the response. Cleaners are not mailed a welcome.
+ */
 export async function confirmWaitlistRequest(
   input: unknown,
   store: WaitlistStore = waitlistStore,
   webhookUrl: string | undefined = process.env.WAITLIST_WEBHOOK_URL,
+  welcome: WelcomeSender = sendCustomerWelcome,
 ): Promise<WaitlistHttpResult> {
   const claim = readClaimId(input);
   if (!claim) return { status: 400, body: { ok: false, error: READ_ERROR } };
@@ -74,9 +83,29 @@ export async function confirmWaitlistRequest(
   if (confirmed.status === "missing") return { status: 409, body: { ok: false, error: SAVE_ERROR } };
   if (confirmed.status === "confirmed") {
     await recordWaitlist(
-      { ...confirmed.signup, createdAt: confirmed.createdAt, source: "tydlii.com" },
+      {
+        ...confirmed.signup,
+        createdAt: confirmed.createdAt,
+        source: "tydlii.com",
+        referralCode: confirmed.referral?.code,
+        referredByEmail: confirmed.referral?.referredByEmail ?? undefined,
+        referredByCode: confirmed.referral?.referredByCode ?? undefined,
+      },
       webhookUrl,
     );
+    if (confirmed.signup.type === "customer" && confirmed.referral) {
+      try {
+        await welcome({
+          to: confirmed.signup.email,
+          name: confirmed.signup.name,
+          code: confirmed.referral.code,
+          shareUrl: confirmed.referral.shareUrl,
+          manageUrl: confirmed.referral.manageUrl,
+        });
+      } catch (error) {
+        console.error("[tydlii welcome] failed", error instanceof Error ? error.message : "");
+      }
+    }
   }
   return { status: 200, body: { ok: true } };
 }

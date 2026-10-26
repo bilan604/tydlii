@@ -82,6 +82,44 @@ test("release lets the same email claim again", async () => {
   }
 });
 
+test("confirming a customer sends the welcome and a cleaner does not", async () => {
+  const { dir, store } = await tempStore();
+  const welcomes: { to: string; shareUrl: string }[] = [];
+  const welcome = async (input: { to: string; shareUrl: string }) => {
+    welcomes.push(input);
+    return { sent: true };
+  };
+  try {
+    const claimed = await claimWaitlistRequest({ ...customer, ref: "not-a-code" }, store);
+    assert.equal(claimed.body.claimed, true);
+    const confirmed = await confirmWaitlistRequest(
+      { email: customer.email, claimId: claimed.body.claimId },
+      store,
+      undefined,
+      welcome,
+    );
+    assert.equal(confirmed.status, 200);
+    assert.equal(welcomes.length, 1);
+    assert.equal(welcomes[0].to, "mina@example.com");
+    assert.match(welcomes[0].shareUrl, /^https:\/\/tydlii\.com\/\?ref=[a-z2-9]+$/);
+
+    const cleaner = await claimWaitlistRequest(
+      { ...customer, type: "cleaner", email: "jordan@example.com", neighbourhoods: ["King West", "CityPlace"] },
+      store,
+    );
+    assert.equal(cleaner.body.claimed, true);
+    await confirmWaitlistRequest(
+      { email: "jordan@example.com", claimId: cleaner.body.claimId },
+      store,
+      undefined,
+      welcome,
+    );
+    assert.equal(welcomes.length, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("confirm without a matching reserve is rejected", async () => {
   const { dir, store } = await tempStore();
   try {

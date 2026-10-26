@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AREAS, type AreaName } from "@/lib/areas";
 import { cad } from "@/lib/format";
 import type { Frequency } from "@/lib/pricing";
+import { REFERRAL_CREDIT_PROMISE, REFERRAL_STORAGE_KEY, referralCodeFromInput } from "@/lib/referral";
 import { HONEYPOT_FIELD } from "@/lib/waitlist";
 import {
   SAVE_ERROR,
@@ -40,6 +41,26 @@ function joinNotes(lines: string[], note: string): string {
   const parts = lines.map((line) => line.trim()).filter(Boolean);
   if (note.trim()) parts.push(note.trim());
   return parts.join("\n").slice(0, 500);
+}
+
+function rememberedReferralCode(): string {
+  if (typeof window === "undefined") return "";
+  const fromUrl = referralCodeFromInput({ ref: new URLSearchParams(window.location.search).get("ref") ?? "" });
+  let stored = "";
+  try {
+    stored = sessionStorage.getItem(REFERRAL_STORAGE_KEY) ?? "";
+  } catch {
+    stored = "";
+  }
+  const code = fromUrl || referralCodeFromInput({ ref: stored });
+  if (code) {
+    try {
+      sessionStorage.setItem(REFERRAL_STORAGE_KEY, code);
+    } catch {
+      /* the code is still sent from memory on this submit */
+    }
+  }
+  return code;
 }
 
 async function submitForm(body: Record<string, unknown>, accessKey: string): Promise<WaitlistSubmitResult> {
@@ -205,6 +226,11 @@ export function CustomerWaitlist({
   const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+  const [referred, setReferred] = useState(false);
+
+  useEffect(() => {
+    setReferred(rememberedReferralCode() !== "");
+  }, []);
 
   const emailOk = EMAIL.test(email.trim());
   const nameOk = name.trim().length >= 2;
@@ -242,6 +268,7 @@ export function CustomerWaitlist({
         [HONEYPOT_FIELD]: honeypot,
         neighbourhoods,
         quote: snapshot.quote,
+        ref: rememberedReferralCode(),
       },
       accessKey,
     );
@@ -271,7 +298,11 @@ export function CustomerWaitlist({
             <Check>Your quote comes with you: {quoteLine(snapshot)}</Check>
             <Check>No payment details. Ever, on this page.</Check>
             <Check>We only contact you about Tydlii&apos;s launch.</Check>
+            <Check>{REFERRAL_CREDIT_PROMISE}</Check>
           </div>
+          {referred ? (
+            <p className="form-hint">A friend referred you. {REFERRAL_CREDIT_PROMISE}</p>
+          ) : null}
         </div>
         {status === "done" ? (
           <Success
@@ -285,6 +316,7 @@ export function CustomerWaitlist({
           >
             We&apos;ll write when Tydlii opens
             {hood ? ` in ${hood}` : postal.trim() ? ` near ${postal.trim().toUpperCase()}` : " in your area"}.
+            Check your email for your referral link. {REFERRAL_CREDIT_PROMISE}
           </Success>
         ) : status === "duplicate" ? (
           <AlreadyListed

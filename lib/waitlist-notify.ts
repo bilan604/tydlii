@@ -1,4 +1,5 @@
 import { isStoredQuote, summarizeQuote } from "./quote-summary";
+import { referralCodeFromInput } from "./referral";
 import { parseWaitlist, type WaitlistSignup } from "./waitlist";
 
 /** Web3Forms JSON endpoint. Do not send a `redirect` field; that turns the response into a 303. */
@@ -11,6 +12,12 @@ const TIMEOUT_MS = 8_000;
 export type WaitlistRecord = WaitlistSignup & {
   createdAt: string;
   source: string;
+  /** This customer's own code, once the signup is kept. */
+  referralCode?: string;
+  /** Referrer email, once a code matches. */
+  referredByEmail?: string;
+  /** Code submitted with the signup, before or after it is resolved. */
+  referredByCode?: string;
 };
 
 export type DeliverResult = { ok: true } | { ok: false; status: number; error: string };
@@ -62,7 +69,7 @@ export function waitlistSubject(record: WaitlistRecord): string {
 
 /** Plain-text body. One field per line so the inbox is scannable. */
 export function waitlistMessage(record: WaitlistRecord): string {
-  return [
+  const lines = [
     `type: ${record.type}`,
     `name: ${oneLine(record.name)}`,
     `email: ${oneLine(record.email)}`,
@@ -72,7 +79,11 @@ export function waitlistMessage(record: WaitlistRecord): string {
     `quote: ${oneLine(quoteSummary(record.quote))}`,
     `createdAt: ${record.createdAt}`,
     `source: ${oneLine(record.source)}`,
-  ].join("\n");
+  ];
+  if (record.referralCode) lines.push(`referralCode: ${oneLine(record.referralCode)}`);
+  if (record.referredByEmail) lines.push(`referredBy: ${oneLine(record.referredByEmail)}`);
+  if (record.referredByCode) lines.push(`referredByCode: ${oneLine(record.referredByCode)}`);
+  return lines.join("\n");
 }
 
 export function web3formsBody(record: WaitlistRecord, accessKey: string): Record<string, string> {
@@ -198,10 +209,12 @@ export async function sendWaitlistEmail(
     return { ok: false, error: SAVE_ERROR };
   }
 
+  const referredByCode = parsed.value.type === "customer" ? referralCodeFromInput(input) : "";
   const record: WaitlistRecord = {
     ...parsed.value,
     createdAt: new Date().toISOString(),
     source: "tydlii.com",
+    ...(referredByCode ? { referredByCode } : {}),
   };
   const sent = await submitWeb3Forms(record, key, fetchImpl);
   if (!sent.ok) return { ok: false, error: sent.error };
@@ -269,10 +282,12 @@ export async function deliverWaitlist(
     return { status: "error", error };
   }
 
+  const referredByCode = parsed.value.type === "customer" ? referralCodeFromInput(input) : "";
   const record: WaitlistRecord = {
     ...parsed.value,
     createdAt: new Date().toISOString(),
     source: "tydlii.com",
+    ...(referredByCode ? { referredByCode } : {}),
   };
   const sent = await submitWeb3Forms(record, key, fetchImpl);
   if (!sent.ok) {

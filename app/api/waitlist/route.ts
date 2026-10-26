@@ -15,9 +15,13 @@ export const dynamic = "force-dynamic";
  *   must sit on the persistent disk (`/var/data/waitlist-emails.json`).
  * - WAITLIST_SEED_EMAILS — optional comma-separated addresses already signed up.
  *   They count as duplicates and are not written into the file.
+ * - RESEND_API_KEY — optional. Customer welcome email after confirm. Missing key
+ *   skips the mail and does not fail the signup. See README.
+ * - EMAIL_FROM — optional sender for that welcome, required together with the key.
  *
  * This route reserves an address. It does not send mail. The browser emails
  * Web3Forms only after a `claimed` response, then calls `/api/waitlist/confirm`.
+ * Confirm stores a customer referral code and sends the welcome when Resend is set.
  */
 
 export async function POST(request: Request) {

@@ -49,7 +49,78 @@ npm start
 
 A new signup is emailed from the **browser** to [Web3Forms](https://web3forms.com), which delivers it to the inbox tied to the access key (`teamtydlii@gmail.com`). The form shows "You're on the list" only after Web3Forms accepts that request. A repeat address shows "You're already on the list" and does not send another email. The message lists type, name, email, phone, neighbourhoods, notes, quote summary, `createdAt`, and `source: "tydlii.com"`. Reply-to is the signup email. Subject is `[Tydlii waitlist] {type} — {email}`.
 
-The browser posts straight to `https://api.web3forms.com/submit`. Render's outbound IP is blocked for server-side Web3Forms on the free plan, so the server does not send the email. Before that post, the browser reserves the address with `POST /api/waitlist`. If the reserve fails, the form shows an error and does not email. After Web3Forms accepts, the browser calls `POST /api/waitlist/confirm`, which logs the signup and optionally forwards `WAITLIST_WEBHOOK_URL`. If Web3Forms rejects it, the browser calls `POST /api/waitlist/release` so the person can retry. A reserve that is never confirmed expires after 15 minutes.
+The browser posts straight to `https://api.web3forms.com/submit`. Render's outbound IP is blocked for server-side Web3Forms on the free plan, so the server does not send the team email. Before that post, the browser reserves the address with `POST /api/waitlist`. If the reserve fails, the form shows an error and does not email. After Web3Forms accepts, the browser calls `POST /api/waitlist/confirm`, which logs the signup and optionally forwards `WAITLIST_WEBHOOK_URL`. If Web3Forms rejects it, the browser calls `POST /api/waitlist/release` so the person can retry. A reserve that is never confirmed expires after 15 minutes.
+
+### Customer welcome email
+
+When a **customer** confirm succeeds, the server sends that person a branded welcome email. Cleaners do not get one. The team Web3Forms alert is unchanged, except a customer message also lists `referredByCode` when they arrived with `?ref=`.
+
+The welcome matches the locked creative: black header, white smile wordmark, the woman-and-dog photo, teal field (`#070707` / `#5c9396`, accent `#04a3ac`), “More living. Less cleaning.”, the three benefit pills, and a referral card. The button says **Get your referral link** and points at `https://tydlii.com/?ref=CODE`. A “Copy your link” line opens `/refer?code=CODE`. The card says **Both get $25 credit after their first paid clean.** It does not say “$25 off” and it does not ask for a neighbourhood.
+
+Web3Forms cannot address the customer. The welcome uses [Resend](https://resend.com). Both variables are optional. If either is missing, or Resend returns an error, the server logs `[tydlii welcome] …` and the signup still succeeds. The referral link is included in that log so it can be opened without an inbox.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `RESEND_API_KEY` | No | Resend API key. Server-only. Not inlined into the client bundle. |
+| `EMAIL_FROM` | No | Sender on a domain verified in Resend, for example `Tydlii <hello@tydlii.com>`. |
+
+Render steps (do this before relying on the inbox; the waitlist works without them):
+
+1. In Resend, add and verify `tydlii.com` (the DNS records Resend shows). Create an API key.
+2. On the Render service, set `RESEND_API_KEY` and `EMAIL_FROM=Tydlii <hello@tydlii.com>`. These are runtime env vars. A restart is enough; they are not baked into the client bundle.
+3. Until the domain is verified, a first test can use `EMAIL_FROM=Tydlii <onboarding@resend.dev>`. Resend only delivers that sender to the email address on the Resend account.
+
+### Referrals
+
+Each confirmed customer gets a unique code. Friends open `https://tydlii.com/?ref=CODE` or `https://tydlii.com/r/CODE` (that path redirects to `/?ref=`). The homepage remembers the code for the tab and the customer form sends it as `ref`. On confirm, a matching code stores `referredByEmail` on the friend. A cleaner signup ignores `ref`.
+
+Credits live in the same JSON file, under `credits`, so they share the waitlist lock:
+
+| Status | Meaning |
+| --- | --- |
+| `pending` | Created when the friend joins. Not usable yet. |
+| `earned` | The referred friend completed a **first paid clean**. Both the referrer and the friend have a $25 account credit (`amountCents: 2500`, `CAD`). |
+| `applied` | A later invoice used an earned credit. |
+
+There is no cash payout and no public route that changes status. `applyReferralCredit` refuses a `pending` credit. The same referred email can open only one credit pair. A second code, or the person’s own email, does not create another. Self-referral is the same normalized email; a duplicate signup is already blocked.
+
+Bookings and payments are not in this app. When they exist, call this from the server path that records the referred customer’s first paid clean (payment captured and the clean completed), not for a quote or a cancellation:
+
+```ts
+import { earnReferralCreditsForFirstPaidClean } from "@/lib/referral-credits";
+
+await earnReferralCreditsForFirstPaidClean(customerEmail, bookingId);
+```
+
+That moves every `pending` credit for that referred email to `earned` and stores `bookingId`. Calling it again earns nothing. Later, when an invoice uses the credit:
+
+```ts
+import { applyReferralCredit } from "@/lib/referral-credits";
+
+await applyReferralCredit(creditId, bookingId);
+```
+
+### Verify locally or on Render without merging
+
+`npm test` covers codes, the pending → earned → applied rules, the welcome HTML, and a missing Resend key.
+
+Without a Resend key, the signup still confirms. The log line is the referral URL:
+
+```bash
+npm run dev
+curl -s -X POST http://localhost:3000/api/waitlist \
+  -H 'content-type: application/json' \
+  -d '{"type":"customer","name":"Mina Chen","email":"mina@example.com","neighbourhoods":["CityPlace"],"consent":true}'
+curl -s -X POST http://localhost:3000/api/waitlist/confirm \
+  -H 'content-type: application/json' \
+  -d '{"email":"mina@example.com","claimId":"PASTE_CLAIM_ID"}'
+```
+
+Open the logged `https://tydlii.com/?ref=CODE` shape on localhost (`http://localhost:3000/?ref=CODE`), join as a second email, and confirm that signup the same way. `data/waitlist-emails.json` then has `referredByEmail` and two `pending` credits. `/refer?code=CODE` shows the link and the copy button. `/r/CODE` redirects to `/?ref=CODE`.
+
+With `RESEND_API_KEY` and `EMAIL_FROM` in `.env.local`, that confirm also sends the HTML welcome. On Render, set those two env vars and restart, then use an email that is not already on the list. Reset a test address from the service shell with `node scripts/reset-waitlist-email.mjs person@example.com`.
+
+`/refer?code=CODE` shows the share URL and a copy button. It does not list the email address. People who joined before this code shipped are not emailed and do not get a code until they are a new confirm. `node scripts/reset-waitlist-email.mjs person@example.com` still removes that address and also drops credit rows whose `referredEmail` is that address, so a test signup can be referred again. `--all` clears the file, including credits. `WAITLIST_SEED_EMAILS` is unchanged.
 
 ### `NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY`
 
@@ -154,7 +225,7 @@ This is a Node web service. The waitlist email is sent by the browser. `/api/wai
 1. Push this repo to GitHub.
 2. In the [Render dashboard](https://dashboard.render.com), choose **New → Blueprint** and select the repo. Render reads `render.yaml`.
    Or create a **Web Service** manually with the build and start commands above, and the root directory as the repo root.
-3. Set `NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY` to the Web3Forms access key for `teamtydlii@gmail.com`. This value is public and is compiled into the client bundle. Leave `WAITLIST_WEBHOOK_URL` empty. Confirm the disk is mounted at `/var/data` and `WAITLIST_STORE_PATH` is `/var/data/waitlist-emails.json`. Put any addresses already in the inbox in `WAITLIST_SEED_EMAILS` if they should not be able to join again.
+3. Set `NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY` to the Web3Forms access key for `teamtydlii@gmail.com`. This value is public and is compiled into the client bundle. Leave `WAITLIST_WEBHOOK_URL` empty. Confirm the disk is mounted at `/var/data` and `WAITLIST_STORE_PATH` is `/var/data/waitlist-emails.json`. Put any addresses already in the inbox in `WAITLIST_SEED_EMAILS` if they should not be able to join again. Customer welcome mail is optional: set `RESEND_API_KEY` and `EMAIL_FROM` when the domain is verified in Resend. Leave them empty and the waitlist still works; the welcome is skipped and logged.
 4. Redeploy so the build picks up the public key. A restart that skips the build does not update it. Adding the disk triggers its own deploy. Until the mount is there, the waitlist shows an error instead of accepting someone.
 
 The key already stored as `WAITLIST_WEB3FORMS_ACCESS_KEY` is still read by the homepage if the public variable is empty, so the current Render env is enough for the next build. Prefer the `NEXT_PUBLIC_` name going forward. After deploy, a signup should arrive at `teamtydlii@gmail.com` without a server-side Web3Forms call.
@@ -192,7 +263,8 @@ If the DNS record is proxied (orange cloud):
 
 ## What’s in the repo
 
-- `app/` — Next.js App Router pages, favicon, and `POST /api/waitlist`
+- `app/` — Next.js App Router pages, favicon, `POST /api/waitlist`, `/refer`, and `/r/[code]`
+- `public/email/` — welcome hero (woman and dog) and the email wordmark
 - `components/` — Option A landing: hero, five pillars, quote, how it works, and the two waitlists
 - `lib/pricing.ts` — quote math
 - `public/brand/` — smile wordmark (navy and white) and the house icon

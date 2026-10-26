@@ -148,10 +148,22 @@ if (!key) {
 }
 
 delete data.entries[key];
+let dropped = 0;
+if (Array.isArray(data.credits)) {
+  data.credits = data.credits.filter((credit) => {
+    if (!credit || typeof credit !== "object" || credit.referredEmail !== email) return true;
+    dropped += 1;
+    return false;
+  });
+}
 try {
   await writeStore(filePath, data);
 } catch (error) {
   console.error(`Could not update ${filePath}.`, error instanceof Error ? error.message : "");
   process.exit(1);
 }
-console.log(`Removed ${email} from ${filePath}.`);
+console.log(
+  `Removed ${email} from ${filePath}.${
+    dropped ? ` Dropped ${dropped} referral credit${dropped === 1 ? "" : "s"} for that referred email.` : ""
+  }`,
+);
