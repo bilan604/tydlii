@@ -46,21 +46,19 @@ npm start
 - Customer payloads include `quote`, the instant-quote object from the calculator.
 - A non-empty `website` field is a honeypot. The route returns 200 and does not store it.
 
-A non-spam signup is emailed through [Web3Forms](https://web3forms.com) to the inbox tied to the access key (`teamtydlii@gmail.com`). When that key is set, the form returns `{ ok: true }` only after Web3Forms accepts the email. The message lists type, name, email, phone, neighbourhoods, notes, quote summary, `createdAt`, and `source: "tydlii.com"`. Reply-to is the signup email.
+A non-spam signup is emailed from the **browser** to [Web3Forms](https://web3forms.com), which delivers it to the inbox tied to the access key (`teamtydlii@gmail.com`). The form shows success only after Web3Forms accepts that request. The message lists type, name, email, phone, neighbourhoods, notes, quote summary, `createdAt`, and `source: "tydlii.com"`. Reply-to is the signup email. Subject is `[Tydlii waitlist] {type} — {email}`.
 
-### `WAITLIST_WEB3FORMS_ACCESS_KEY`
+The browser posts straight to `https://api.web3forms.com/submit`. Render's outbound IP is blocked for server-side Web3Forms on the free plan, so `/api/waitlist` does not send the email and a Web3Forms failure there cannot return 502. After the browser send succeeds, the form also notifies `/api/waitlist` in the background. That call only validates, logs, and optionally forwards `WAITLIST_WEBHOOK_URL`. If it fails, the signup still counts.
 
-| Value | Behaviour |
-| --- | --- |
-| Unset, and not production | The server logs the JSON and returns **200**. Signups are not emailed. This is local dev. |
-| Unset, production | The server logs the JSON and returns **500**. The form does not say the signup was saved. |
-| Access key | `POST https://api.web3forms.com/submit` with `access_key`, `subject`, `from_name` (the person's name), `replyto`, and a text `message`. A failed submit returns 502. |
+### `NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY`
 
-Set this in `.env.local` to try a real send, or in the Render dashboard for production. Do not commit the key. Web3Forms documents server-side submits as a paid feature that may need the server IP allowlisted. If a production signup returns 502 after the key is set, check that in the Web3Forms dashboard. The key stays on the server and is not sent to the browser.
+The Web3Forms access key. It is **public** and Next.js copies it into the client bundle at **build** time. Set it in Render, then redeploy so `npm run build` runs again. A restart without a rebuild keeps the old bundle.
+
+If this is unset, the homepage falls back to `WAITLIST_WEB3FORMS_ACCESS_KEY` and passes that value into the form. That fallback is also visible to the browser. The server still does not call Web3Forms.
 
 ### `WAITLIST_WEBHOOK_URL`
 
-Optional. After Web3Forms accepts the signup (or after the local log stub, when no key is set outside production), the server also POSTs the same JSON to this `http` or `https` URL. A bad URL, a redirect, or a non-2xx response is logged and does **not** fail the signup. Leave it empty unless you want that extra copy. Do not point it at a Google Apps Script web app: `/exec` returns 302 and the follow-up request fails.
+Optional. `POST /api/waitlist` forwards the JSON to this `http` or `https` URL. A bad URL, a redirect, or a non-2xx response is logged and does **not** fail the signup. Leave it empty. Do not point it at a Google Apps Script web app: `/exec` returns 302 and the follow-up request fails.
 
 Example:
 
@@ -98,7 +96,7 @@ The dollar bases, add-ons, and multipliers are the brief. The square-foot labels
 
 ## Deploy on Render
 
-This is a Node web service, not a static export, because `/api/waitlist` has to email signups.
+This is a Node web service. The waitlist email is sent by the browser; `/api/waitlist` only logs a copy.
 
 [`render.yaml`](render.yaml) is a Render Blueprint:
 
@@ -112,10 +110,10 @@ This is a Node web service, not a static export, because `/api/waitlist` has to 
 1. Push this repo to GitHub.
 2. In the [Render dashboard](https://dashboard.render.com), choose **New → Blueprint** and select the repo. Render reads `render.yaml`.
    Or create a **Web Service** manually with the build and start commands above, and the root directory as the repo root.
-3. Set `WAITLIST_WEB3FORMS_ACCESS_KEY` to the Web3Forms access key created for `teamtydlii@gmail.com`. That is the production inbox. Leave `WAITLIST_WEBHOOK_URL` empty unless you also want a best-effort JSON copy somewhere else.
-4. Deploy. Note the service hostname, for example `tydlii.onrender.com`.
+3. Set `NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY` to the Web3Forms access key for `teamtydlii@gmail.com`. This value is public and is compiled into the client bundle. Leave `WAITLIST_WEBHOOK_URL` empty.
+4. Redeploy so the build picks up the public key. A restart that skips the build does not update it.
 
-Set `WAITLIST_WEB3FORMS_ACCESS_KEY` and redeploy before relying on the form. Until that key is present, production logs `[tydlii waitlist] stub accepted` and the form returns an error. After it is set, a signup should arrive at `teamtydlii@gmail.com`.
+The key already stored as `WAITLIST_WEB3FORMS_ACCESS_KEY` is still read by the homepage if the public variable is empty, so the current Render env is enough for the next build. Prefer the `NEXT_PUBLIC_` name going forward. After deploy, a signup should arrive at `teamtydlii@gmail.com` without a server-side Web3Forms call.
 
 ## Cloudflare DNS for tydlii.com
 

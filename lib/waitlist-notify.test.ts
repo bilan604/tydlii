@@ -4,8 +4,11 @@ import { quoteHome } from "./pricing";
 import { summarizeQuote } from "./quote-summary";
 import {
   WEB3FORMS_ENDPOINT,
-  deliverWaitlist,
+  configuredAccessKey,
   quoteSummary,
+  recordWaitlist,
+  sendWaitlistEmail,
+  submitWeb3Forms,
   waitlistMessage,
   waitlistSubject,
   type WaitlistRecord,
@@ -82,96 +85,133 @@ test("a cleaner signup with no quote still lists every field", () => {
   assert.match(message, /^quote: $/m);
 });
 
-test("a successful Web3Forms submit returns ok and then forwards the webhook", async () => {
-  const { calls, fetchImpl } = mockFetch(async (url) => {
-    if (url === WEB3FORMS_ENDPOINT) return jsonResponse({ success: true, message: "Email sent successfully!" });
-    return jsonResponse({ ok: true });
-  });
+test("the browser submit posts the Web3Forms payload and not our API", async () => {
+  const { calls, fetchImpl } = mockFetch(async () =>
+    jsonResponse({ success: true, message: "Email sent successfully!" }),
+  );
 
-  const result = await deliverWaitlist(
-    customer,
+  const result = await sendWaitlistEmail(
     {
-      WAITLIST_WEB3FORMS_ACCESS_KEY: "test-access-key",
-      WAITLIST_WEBHOOK_URL: "https://hooks.example/waitlist",
+      type: customer.type,
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      neighbourhoods: customer.neighbourhoods,
+      notes: customer.notes,
+      consent: true,
+      quote: customer.quote,
     },
+    "test-access-key",
     fetchImpl,
   );
 
-  assert.deepEqual(result, { ok: true });
-  assert.equal(calls.length, 2);
+  assert.deepEqual(result, { ok: true, emailed: true });
+  assert.equal(calls.length, 1);
   assert.equal(calls[0].url, WEB3FORMS_ENDPOINT);
   assert.equal(calls[0].init?.method, "POST");
   const mailed = JSON.parse(String(calls[0].init?.body)) as Record<string, string>;
-  assert.deepEqual(mailed, {
-    access_key: "test-access-key",
-    subject: "[Tydlii waitlist] customer — mina@example.com",
-    from_name: "Mina Chen",
-    replyto: "mina@example.com",
-    message: waitlistMessage(customer),
-  });
-  assert.equal(calls[1].url, "https://hooks.example/waitlist");
-  const forwarded = JSON.parse(String(calls[1].init?.body)) as WaitlistRecord;
-  assert.equal(forwarded.email, customer.email);
-  assert.equal("access_key" in forwarded, false);
+  assert.equal(mailed.access_key, "test-access-key");
+  assert.equal(mailed.subject, "[Tydlii waitlist] customer — mina@example.com");
+  assert.equal(mailed.from_name, "Mina Chen");
+  assert.equal(mailed.replyto, "mina@example.com");
+  assert.match(mailed.message, /^type: customer$/m);
+  assert.match(mailed.message, /^source: tydlii.com$/m);
+  assert.match(mailed.message, /quote: /);
+  assert.equal(calls.some((call) => call.url.includes("/api/waitlist")), false);
 });
 
-test("Web3Forms success:false fails the signup and skips the webhook", async () => {
+test("submitWeb3Forms sends the full field list", async () => {
+  const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ success: true }));
+  const result = await submitWeb3Forms(customer, "test-access-key", fetchImpl);
+  assert.deepEqual(result, { ok: true });
+  const mailed = JSON.parse(String(calls[0].init?.body)) as Record<string, string>;
+  assert.equal(mailed.message, waitlistMessage(customer));
+});
+
+test("Web3Forms success:false does not count as sent", async () => {
   const { calls, fetchImpl } = mockFetch(async () =>
     jsonResponse({ success: false, body: { message: "Invalid access key" } }, 400),
   );
-  const result = await deliverWaitlist(
-    customer,
+  const result = await sendWaitlistEmail(
     {
-      WAITLIST_WEB3FORMS_ACCESS_KEY: "test-access-key",
-      WAITLIST_WEBHOOK_URL: "https://hooks.example/waitlist",
+      type: "cleaner",
+      name: "Jordan Hale",
+      email: "jordan@example.com",
+      neighbourhoods: ["King West"],
+      consent: true,
     },
+    "test-access-key",
     fetchImpl,
   );
   assert.equal(result.ok, false);
-  if (result.ok) return;
-  assert.equal(result.status, 502);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, WEB3FORMS_ENDPOINT);
 });
 
-test("a webhook failure after email is accepted still returns ok", async () => {
-  const { calls, fetchImpl } = mockFetch(async (url) => {
-    if (url === WEB3FORMS_ENDPOINT) return jsonResponse({ success: true });
-    return jsonResponse({ ok: false }, 405);
-  });
-  const result = await deliverWaitlist(
-    customer,
+test("a honeypot is not emailed", async () => {
+  const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ success: true }));
+  const result = await sendWaitlistEmail(
     {
-      WAITLIST_WEB3FORMS_ACCESS_KEY: "test-access-key",
-      WAITLIST_WEBHOOK_URL: "https://script.google.com/macros/s/example/exec",
+      type: customer.type,
+      name: customer.name,
+      email: customer.email,
+      neighbourhoods: customer.neighbourhoods,
+      consent: true,
+      website: "https://spam.example",
     },
+    "test-access-key",
     fetchImpl,
   );
-  assert.deepEqual(result, { ok: true });
-  assert.equal(calls.length, 2);
-  assert.equal(calls[1].init?.redirect, "manual");
-});
-
-test("without an access key outside production the signup is logged and not posted to Web3Forms", async () => {
-  const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ ok: true }));
-  const result = await deliverWaitlist(
-    customer,
-    { WAITLIST_WEBHOOK_URL: "not a url", NODE_ENV: "development" },
-    fetchImpl,
-  );
-  assert.deepEqual(result, { ok: true });
+  assert.deepEqual(result, { ok: true, emailed: false });
   assert.equal(calls.length, 0);
 });
 
-test("production without an access key does not claim the signup was saved", async () => {
-  const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ ok: true }));
-  const result = await deliverWaitlist(
-    customer,
-    { NODE_ENV: "production", WAITLIST_WEBHOOK_URL: "https://hooks.example/waitlist" },
+test("a missing access key does not post", async () => {
+  const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ success: true }));
+  const result = await sendWaitlistEmail(
+    {
+      type: customer.type,
+      name: customer.name,
+      email: customer.email,
+      neighbourhoods: customer.neighbourhoods,
+      consent: true,
+    },
+    "  ",
     fetchImpl,
   );
   assert.equal(result.ok, false);
-  if (result.ok) return;
-  assert.equal(result.status, 500);
+  assert.equal(calls.length, 0);
+});
+
+test("the server record logs and forwards the webhook without calling Web3Forms", async () => {
+  const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ ok: false }, 405));
+  const result = await recordWaitlist(customer, "https://hooks.example/waitlist", fetchImpl);
+  assert.deepEqual(result, { ok: true });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://hooks.example/waitlist");
+  assert.equal(calls[0].init?.redirect, "manual");
+  const forwarded = JSON.parse(String(calls[0].init?.body)) as WaitlistRecord;
+  assert.equal(forwarded.email, customer.email);
+  assert.equal("access_key" in forwarded, false);
+});
+
+test("configuredAccessKey prefers the public variable, then the server fallback", () => {
+  const previous = process.env.NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY;
+  process.env.NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY = "public-key";
+  try {
+    assert.equal(configuredAccessKey("server-key"), "public-key");
+    delete process.env.NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY;
+    assert.equal(configuredAccessKey("server-key"), "server-key");
+    assert.equal(configuredAccessKey("  "), "");
+  } finally {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY;
+    else process.env.NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY = previous;
+  }
+});
+
+test("a bad webhook URL still accepts the server record", async () => {
+  const { calls, fetchImpl } = mockFetch(async () => jsonResponse({ ok: true }));
+  const result = await recordWaitlist(customer, "not a url", fetchImpl);
+  assert.deepEqual(result, { ok: true });
   assert.equal(calls.length, 0);
 });

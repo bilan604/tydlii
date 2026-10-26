@@ -1,16 +1,16 @@
-import { deliverWaitlist } from "@/lib/waitlist-notify";
+import { recordWaitlist } from "@/lib/waitlist-notify";
 import { parseWaitlist } from "@/lib/waitlist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Env (set on Render; never commit secrets):
- * - WAITLIST_WEB3FORMS_ACCESS_KEY — Web3Forms key for teamtydlii@gmail.com.
- *   When set, a non-spam signup returns ok only after Web3Forms accepts it.
- *   When unset in production, the signup is logged and the route returns 500.
- *   When unset outside production, the signup is logged and the route returns 200.
- * - WAITLIST_WEBHOOK_URL — optional http(s) JSON forward after that accept.
+ * Env (set on Render; never commit the key):
+ * - NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY — public Web3Forms key. The browser
+ *   posts the signup. Next.js inlines it into the client bundle at build time.
+ * - WAITLIST_WEB3FORMS_ACCESS_KEY — optional fallback the homepage can pass to the
+ *   form when the public var is unset. This route does not call Web3Forms.
+ * - WAITLIST_WEBHOOK_URL — optional http(s) JSON forward after validation.
  *   Failures are logged only. Do not point this at a Google Apps Script web app.
  */
 
@@ -51,9 +51,6 @@ export async function POST(request: Request) {
     source: "tydlii.com",
   };
 
-  const delivered = await deliverWaitlist(payload);
-  if (!delivered.ok) {
-    return json({ ok: false, error: delivered.error }, delivered.status);
-  }
+  await recordWaitlist(payload, process.env.WAITLIST_WEBHOOK_URL);
   return json({ ok: true });
 }
