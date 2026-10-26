@@ -135,6 +135,17 @@ Use Cloudflare for DNS. Render issues the certificate. Follow [Render’s Cloudf
 
 `https://tydlii.com` and `https://www.tydlii.com` should both open the site. Redirect one host to the other in Render (custom domain settings) or with a Cloudflare redirect rule so there is a single canonical host. The site’s canonical URL is `https://tydlii.com`.
 
+### Do not cache HTML
+
+The homepage response is `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`, plus `CDN-Cache-Control: no-store` and `Cloudflare-CDN-Cache-Control: no-store`. That is what stops a phone, or Cloudflare, from keeping the previous page and its old waitlist JavaScript. Hashed files under `/_next/static/` stay `public, max-age=31536000, immutable`.
+
+If the DNS record is proxied (orange cloud):
+
+- Do not add a **Cache Everything** page rule, and do not set an Edge Cache TTL or Browser Cache TTL on the document. Those override the origin and will pin an old homepage on the edge.
+- `no-store` is the directive Cloudflare does not cache, on free plans and with Origin Cache Control on. `s-maxage` would cache the HTML for a year. This app does not send `s-maxage` on documents.
+- After each deploy that changes the waitlist, open **Caching → Configuration → Purge Cache** and purge `https://tydlii.com/` and `https://www.tydlii.com/` (or Purge Everything once). Headers stop new caching; they do not delete an object Cloudflare already stored.
+- Reload the homepage and confirm `cf-cache-status` is `DYNAMIC` or `BYPASS`, not `HIT`. A normal mobile Safari or Chrome visit should then load the current bundle. A private tab is not required.
+
 ## What’s in the repo
 
 - `app/` — Next.js App Router pages, favicon, and `POST /api/waitlist`
