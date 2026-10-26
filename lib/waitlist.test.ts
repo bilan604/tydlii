@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AREAS } from "./areas";
-import { parseWaitlist } from "./waitlist";
+import { HONEYPOT_FIELD, parseWaitlist } from "./waitlist";
 
 const customer = {
   type: "customer",
@@ -87,6 +87,20 @@ test("unknown neighbourhoods and missing consent are rejected", () => {
 });
 
 test("a filled honeypot is accepted as spam and not stored as a signup", () => {
+  const parsed = parseWaitlist({ ...customer, [HONEYPOT_FIELD]: "filled by a bot" });
+  assert.deepEqual(parsed, { ok: true, spam: true });
+  assert.equal(HONEYPOT_FIELD.includes("web"), false);
+  assert.equal(HONEYPOT_FIELD.includes("url"), false);
+});
+
+test("a legacy website field is still a honeypot", () => {
   const parsed = parseWaitlist({ ...customer, website: "https://spam.example" });
   assert.deepEqual(parsed, { ok: true, spam: true });
+});
+
+test("an empty honeypot is a normal signup", () => {
+  const parsed = parseWaitlist({ ...customer, [HONEYPOT_FIELD]: "  ", website: "" });
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.spam) return;
+  assert.equal(parsed.value.email, "mina@example.com");
 });

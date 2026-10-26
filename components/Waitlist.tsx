@@ -4,7 +4,13 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { AREAS, type AreaName } from "@/lib/areas";
 import { cad } from "@/lib/format";
 import type { Frequency } from "@/lib/pricing";
-import { SAVE_ERROR, configuredAccessKey, sendWaitlistEmail } from "@/lib/waitlist-notify";
+import { HONEYPOT_FIELD } from "@/lib/waitlist";
+import {
+  SAVE_ERROR,
+  configuredAccessKey,
+  deliverWaitlist,
+  type WaitlistSubmitResult,
+} from "@/lib/waitlist-notify";
 import type { QuoteSnapshot } from "./QuoteCalculator";
 import { Check } from "./ui";
 
@@ -20,7 +26,7 @@ const FREQ_SHORT: Record<Frequency, string> = {
 const EXPERIENCE = ["None yet", "Under 1 year", "1–2 years", "3–5 years", "5+ years"] as const;
 const RIDES = ["Yes, I have a vehicle", "No vehicle", "Transit is fine"] as const;
 
-type Status = "idle" | "sending" | "done" | "error";
+type Status = "idle" | "sending" | "done" | "duplicate" | "error";
 
 function quoteLine(snapshot: QuoteSnapshot): string {
   const half = snapshot.halfBaths > 0 ? ` + ${snapshot.halfBaths} half` : "";
@@ -36,29 +42,40 @@ function joinNotes(lines: string[], note: string): string {
   return parts.join("\n").slice(0, 500);
 }
 
-async function postWaitlist(body: Record<string, unknown>, accessKey: string): Promise<string | null> {
+async function submitForm(body: Record<string, unknown>, accessKey: string): Promise<WaitlistSubmitResult> {
   try {
-    const sent = await sendWaitlistEmail(body, configuredAccessKey(accessKey));
-    if (!sent.ok) return sent.error;
-    if (sent.emailed) {
-      void fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }).catch(() => undefined);
-    }
-    return null;
+    return await deliverWaitlist(body, configuredAccessKey(accessKey));
   } catch {
-    return SAVE_ERROR;
+    return { status: "error", error: SAVE_ERROR };
   }
 }
 
+/**
+ * Bot trap. Not named or labeled as a website or URL: mobile browsers autofill
+ * those from the contact card and a real signup would never be emailed.
+ * It sits after the real fields so it is not the first input Safari assigns.
+ */
 function Honeypot({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <div className="hp" aria-hidden="true">
       <label>
-        Website
-        <input tabIndex={-1} autoComplete="off" value={value} onChange={(event) => onChange(event.target.value)} />
+        Leave blank
+        <input
+          type="text"
+          name={HONEYPOT_FIELD}
+          tabIndex={-1}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          aria-hidden="true"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-bwignore="true"
+          data-form-type="other"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
       </label>
     </div>
   );
@@ -140,6 +157,14 @@ function Actions({
   );
 }
 
+function AlreadyListed({ onReset }: { onReset: () => void }) {
+  return (
+    <Success kicker="Waitlist" title="You're already on the list." onReset={onReset}>
+      This email is already signed up, so we didn't send it again.
+    </Success>
+  );
+}
+
 function Success({
   kicker,
   title,
@@ -176,7 +201,7 @@ export function CustomerWaitlist({
   const [hood, setHood] = useState<AreaName | "">("");
   const [note, setNote] = useState("");
   const [consent, setConsent] = useState(false);
-  const [website, setWebsite] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
@@ -206,7 +231,7 @@ export function CustomerWaitlist({
 
     const neighbourhoods: AreaName[] = hood ? [hood] : ["Other"];
     setStatus("sending");
-    const failure = await postWaitlist(
+    const result = await submitForm(
       {
         type: "customer",
         name,
@@ -214,18 +239,22 @@ export function CustomerWaitlist({
         phone: "",
         notes: joinNotes([postal.trim() ? `Postal: ${postal.trim().toUpperCase()}` : ""], note),
         consent: true,
-        website,
+        [HONEYPOT_FIELD]: honeypot,
         neighbourhoods,
         quote: snapshot.quote,
       },
       accessKey,
     );
-    if (failure) {
-      setStatus("error");
-      setError(failure);
+    if (result.status === "sent") {
+      setStatus("done");
       return;
     }
-    setStatus("done");
+    if (result.status === "duplicate") {
+      setStatus("duplicate");
+      return;
+    }
+    setStatus("error");
+    setError(result.error);
   }
 
   return (
@@ -257,9 +286,16 @@ export function CustomerWaitlist({
             We&apos;ll write when Tydlii opens
             {hood ? ` in ${hood}` : postal.trim() ? ` near ${postal.trim().toUpperCase()}` : " in your area"}.
           </Success>
+        ) : status === "duplicate" ? (
+          <AlreadyListed
+            onReset={() => {
+              setStatus("idle");
+              setConsent(false);
+              setChecked(false);
+            }}
+          />
         ) : (
           <form className="signup" onSubmit={onSubmit} noValidate>
-            <Honeypot value={website} onChange={setWebsite} />
             <div className="form-grid">
               <TextField
                 label="Name"
@@ -331,6 +367,7 @@ export function CustomerWaitlist({
               error={error}
               onCheck={() => setChecked(true)}
             />
+            <Honeypot value={honeypot} onChange={setHoneypot} />
           </form>
         )}
       </div>
@@ -347,7 +384,7 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
   const [ride, setRide] = useState("");
   const [note, setNote] = useState("");
   const [consent, setConsent] = useState(false);
-  const [website, setWebsite] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
@@ -390,7 +427,7 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
     }
 
     setStatus("sending");
-    const failure = await postWaitlist(
+    const result = await submitForm(
       {
         type: "cleaner",
         name,
@@ -401,18 +438,22 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
           note,
         ),
         consent: true,
-        website,
+        [HONEYPOT_FIELD]: honeypot,
         neighbourhoods: hoods,
         quote: null,
       },
       accessKey,
     );
-    if (failure) {
-      setStatus("error");
-      setError(failure);
+    if (result.status === "sent") {
+      setStatus("done");
       return;
     }
-    setStatus("done");
+    if (result.status === "duplicate") {
+      setStatus("duplicate");
+      return;
+    }
+    setStatus("error");
+    setError(result.error);
   }
 
   return (
@@ -443,9 +484,16 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
             We&apos;ll be in touch about {hoods.length} neighbourhood{hoods.length === 1 ? "" : "s"}:{" "}
             {hoods.join(", ")}.
           </Success>
+        ) : status === "duplicate" ? (
+          <AlreadyListed
+            onReset={() => {
+              setStatus("idle");
+              setConsent(false);
+              setChecked(false);
+            }}
+          />
         ) : (
           <form className="signup" onSubmit={onSubmit} noValidate>
-            <Honeypot value={website} onChange={setWebsite} />
             <div className="form-grid">
               <TextField
                 label="Name"
@@ -545,6 +593,7 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
               error={error}
               onCheck={() => setChecked(true)}
             />
+            <Honeypot value={honeypot} onChange={setHoneypot} />
           </form>
         )}
       </div>

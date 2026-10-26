@@ -44,11 +44,12 @@ npm start
 - **Cleaners send `neighbourhoods` as an array.** One area is allowed. Several are the normal case. The form is a pill multi-select — CityPlace, King West, Liberty Village, Yonge–Eglinton, North York Centre, and Other — not a single dropdown.
 - Customers send one neighbourhood in that same array. A postal code with no neighbourhood is stored as `Other`, and the postal code is written into `notes`.
 - Customer payloads include `quote`, the instant-quote object from the calculator.
-- A non-empty `website` field is a honeypot. The route returns 200 and does not store it.
+- A non-empty `tyd_check` field is a honeypot. The old `website` name is still treated as one. The route returns 200 and does not store it. The field is labeled "Leave blank", not Website or URL, because mobile Safari and Chrome autofill those from the contact card.
+- The same email can join once, on either form. Customer and cleaner share one list.
 
-A non-spam signup is emailed from the **browser** to [Web3Forms](https://web3forms.com), which delivers it to the inbox tied to the access key (`teamtydlii@gmail.com`). The form shows success only after Web3Forms accepts that request. The message lists type, name, email, phone, neighbourhoods, notes, quote summary, `createdAt`, and `source: "tydlii.com"`. Reply-to is the signup email. Subject is `[Tydlii waitlist] {type} — {email}`.
+A new signup is emailed from the **browser** to [Web3Forms](https://web3forms.com), which delivers it to the inbox tied to the access key (`teamtydlii@gmail.com`). The form shows "You're on the list" only after Web3Forms accepts that request. A repeat address shows "You're already on the list" and does not send another email. The message lists type, name, email, phone, neighbourhoods, notes, quote summary, `createdAt`, and `source: "tydlii.com"`. Reply-to is the signup email. Subject is `[Tydlii waitlist] {type} — {email}`.
 
-The browser posts straight to `https://api.web3forms.com/submit`. Render's outbound IP is blocked for server-side Web3Forms on the free plan, so `/api/waitlist` does not send the email and a Web3Forms failure there cannot return 502. After the browser send succeeds, the form also notifies `/api/waitlist` in the background. That call only validates, logs, and optionally forwards `WAITLIST_WEBHOOK_URL`. If it fails, the signup still counts.
+The browser posts straight to `https://api.web3forms.com/submit`. Render's outbound IP is blocked for server-side Web3Forms on the free plan, so the server does not send the email. Before that post, the browser reserves the address with `POST /api/waitlist`. If the reserve fails, the form shows an error and does not email. After Web3Forms accepts, the browser calls `POST /api/waitlist/confirm`, which logs the signup and optionally forwards `WAITLIST_WEBHOOK_URL`. If Web3Forms rejects it, the browser calls `POST /api/waitlist/release` so the person can retry. A reserve that is never confirmed expires after 15 minutes.
 
 ### `NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY`
 
@@ -58,9 +59,37 @@ If this is unset, the homepage falls back to `WAITLIST_WEB3FORMS_ACCESS_KEY` and
 
 ### `WAITLIST_WEBHOOK_URL`
 
-Optional. `POST /api/waitlist` forwards the JSON to this `http` or `https` URL. A bad URL, a redirect, or a non-2xx response is logged and does **not** fail the signup. Leave it empty. Do not point it at a Google Apps Script web app: `/exec` returns 302 and the follow-up request fails.
+Optional. `POST /api/waitlist/confirm` forwards the JSON to this `http` or `https` URL after Web3Forms has accepted the signup. A bad URL, a redirect, or a non-2xx response is logged and does **not** fail the signup. Leave it empty. Do not point it at a Google Apps Script web app: `/exec` returns 302 and the follow-up request fails.
 
-Example:
+### Dedupe store
+
+There is no database. Addresses are kept in a JSON file, one entry per email across both forms.
+
+| Where | File |
+| --- | --- |
+| Render | `/var/data/waitlist-emails.json` on the persistent disk mounted at `/var/data` |
+| Local | `data/waitlist-emails.json` (gitignored), unless `WAITLIST_STORE_PATH` is set |
+
+`render.yaml` attaches that disk and sets `WAITLIST_STORE_PATH`. Only files on the mount survive deploys and restarts. The service stays at one instance, and deploys are not zero-downtime, so two versions never write the file at once. A one-off job cannot see the disk.
+
+On Render, if that path is not on its own mount, the form refuses new signups instead of remembering them on a disk the next deploy erases.
+
+`WAITLIST_SEED_EMAILS` is an optional comma-separated list for people who joined before the file existed. Seeded addresses are always duplicates. They are not written into the file. Removing one means editing the env var and redeploying.
+
+A GitHub auto-deploy does not attach a new disk by itself. Sync the blueprint, or add a 1 GB disk mounted at `/var/data` in the dashboard, before relying on this. Until that mount exists, new signups show the save error and nothing is emailed.
+
+### Reset
+
+Use the **service shell** in the Render dashboard (not a one-off job):
+
+```bash
+node scripts/reset-waitlist-email.mjs person@example.com
+node scripts/reset-waitlist-email.mjs --all
+```
+
+`--all` clears the file and leaves `WAITLIST_SEED_EMAILS` in place. Locally, `npm run waitlist:reset -- person@example.com` does the same.
+
+Example (this reserves the address for 15 minutes and does not send email):
 
 ```bash
 curl -s -X POST http://localhost:3000/api/waitlist \
@@ -96,7 +125,7 @@ The dollar bases, add-ons, and multipliers are the brief. The square-foot labels
 
 ## Deploy on Render
 
-This is a Node web service. The waitlist email is sent by the browser; `/api/waitlist` only logs a copy.
+This is a Node web service. The waitlist email is sent by the browser. `/api/waitlist` reserves the address in the dedupe file; it does not call Web3Forms.
 
 [`render.yaml`](render.yaml) is a Render Blueprint:
 
@@ -106,12 +135,13 @@ This is a Node web service. The waitlist email is sent by the browser; `/api/wai
 - Health check: `/`
 - Region: Ohio (change it if you prefer)
 - Plan: `starter` (change the plan to match the account)
+- Persistent disk: 1 GB at `/var/data` for the waitlist file
 
 1. Push this repo to GitHub.
 2. In the [Render dashboard](https://dashboard.render.com), choose **New → Blueprint** and select the repo. Render reads `render.yaml`.
    Or create a **Web Service** manually with the build and start commands above, and the root directory as the repo root.
-3. Set `NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY` to the Web3Forms access key for `teamtydlii@gmail.com`. This value is public and is compiled into the client bundle. Leave `WAITLIST_WEBHOOK_URL` empty.
-4. Redeploy so the build picks up the public key. A restart that skips the build does not update it.
+3. Set `NEXT_PUBLIC_WAITLIST_WEB3FORMS_ACCESS_KEY` to the Web3Forms access key for `teamtydlii@gmail.com`. This value is public and is compiled into the client bundle. Leave `WAITLIST_WEBHOOK_URL` empty. Confirm the disk is mounted at `/var/data` and `WAITLIST_STORE_PATH` is `/var/data/waitlist-emails.json`. Put any addresses already in the inbox in `WAITLIST_SEED_EMAILS` if they should not be able to join again.
+4. Redeploy so the build picks up the public key. A restart that skips the build does not update it. Adding the disk triggers its own deploy. Until the mount is there, the waitlist shows an error instead of accepting someone.
 
 The key already stored as `WAITLIST_WEB3FORMS_ACCESS_KEY` is still read by the homepage if the public variable is empty, so the current Render env is enough for the next build. Prefer the `NEXT_PUBLIC_` name going forward. After deploy, a signup should arrive at `teamtydlii@gmail.com` without a server-side Web3Forms call.
 

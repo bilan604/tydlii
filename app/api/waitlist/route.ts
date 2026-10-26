@@ -1,5 +1,4 @@
-import { recordWaitlist } from "@/lib/waitlist-notify";
-import { parseWaitlist } from "@/lib/waitlist";
+import { claimWaitlistRequest, jsonResult, readJsonRequest } from "@/lib/waitlist-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,47 +9,19 @@ export const dynamic = "force-dynamic";
  *   posts the signup. Next.js inlines it into the client bundle at build time.
  * - WAITLIST_WEB3FORMS_ACCESS_KEY — optional fallback the homepage can pass to the
  *   form when the public var is unset. This route does not call Web3Forms.
- * - WAITLIST_WEBHOOK_URL — optional http(s) JSON forward after validation.
- *   Failures are logged only. Do not point this at a Google Apps Script web app.
+ * - WAITLIST_WEBHOOK_URL — optional http(s) JSON forward after the browser confirms
+ *   a signup that Web3Forms accepted. Failures are logged only.
+ * - WAITLIST_STORE_PATH — JSON file of addresses already on the list. On Render this
+ *   must sit on the persistent disk (`/var/data/waitlist-emails.json`).
+ * - WAITLIST_SEED_EMAILS — optional comma-separated addresses already signed up.
+ *   They count as duplicates and are not written into the file.
+ *
+ * This route reserves an address. It does not send mail. The browser emails
+ * Web3Forms only after a `claimed` response, then calls `/api/waitlist/confirm`.
  */
 
-function json(body: { ok: boolean; error?: string }, status = 200) {
-  return Response.json(body, { status });
-}
-
 export async function POST(request: Request) {
-  let text: string;
-  try {
-    text = await request.text();
-  } catch {
-    return json({ ok: false, error: "That signup could not be read." }, 400);
-  }
-
-  if (text.length > 20_000) {
-    return json({ ok: false, error: "That signup is too large." }, 413);
-  }
-
-  let body: unknown;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    return json({ ok: false, error: "That signup could not be read." }, 400);
-  }
-
-  const parsed = parseWaitlist(body);
-  if (!parsed.ok) {
-    return json({ ok: false, error: parsed.error }, 400);
-  }
-  if (parsed.spam) {
-    return json({ ok: true });
-  }
-
-  const payload = {
-    ...parsed.value,
-    createdAt: new Date().toISOString(),
-    source: "tydlii.com",
-  };
-
-  await recordWaitlist(payload, process.env.WAITLIST_WEBHOOK_URL);
-  return json({ ok: true });
+  const read = await readJsonRequest(request);
+  if (!read.ok) return jsonResult(read.result);
+  return jsonResult(await claimWaitlistRequest(read.value));
 }

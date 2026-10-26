@@ -15,7 +15,14 @@ export type WaitlistRecord = WaitlistSignup & {
 
 export type DeliverResult = { ok: true } | { ok: false; status: number; error: string };
 
-export type SendResult = { ok: true; emailed: boolean } | { ok: false; error: string };
+/** `ok` is only returned after Web3Forms accepts the message. */
+export type SendResult = { ok: true; emailed: true } | { ok: false; error: string };
+
+/** What the form is allowed to show after a submit. */
+export type WaitlistSubmitResult =
+  | { status: "sent" }
+  | { status: "duplicate" }
+  | { status: "error"; error: string };
 
 /**
  * Key the browser sends to Web3Forms. The public var is inlined into the client
@@ -172,8 +179,9 @@ async function forwardWebhook(
 }
 
 /**
- * Browser path. Validates, skips the honeypot, and POSTs to Web3Forms.
- * This does not call our API. Render's outbound IP is blocked on the free plan.
+ * Browser mailer. Validates and POSTs to Web3Forms.
+ * A honeypot is not emailed and is not a success. Render's outbound IP is
+ * blocked on the free plan, so this stays in the browser.
  */
 export async function sendWaitlistEmail(
   input: unknown,
@@ -182,7 +190,7 @@ export async function sendWaitlistEmail(
 ): Promise<SendResult> {
   const parsed = parseWaitlist(input);
   if (!parsed.ok) return { ok: false, error: parsed.error };
-  if (parsed.spam) return { ok: true, emailed: false };
+  if (parsed.spam) return { ok: false, error: SAVE_ERROR };
 
   const key = accessKey?.trim() ?? "";
   if (!key) {
@@ -198,6 +206,84 @@ export async function sendWaitlistEmail(
   const sent = await submitWeb3Forms(record, key, fetchImpl);
   if (!sent.ok) return { ok: false, error: sent.error };
   return { ok: true, emailed: true };
+}
+
+type ClaimPayload = {
+  ok?: unknown;
+  claimed?: unknown;
+  duplicate?: unknown;
+  spam?: unknown;
+  claimId?: unknown;
+  error?: unknown;
+};
+
+async function postJson(
+  fetchImpl: typeof fetch,
+  url: string,
+  body: unknown,
+): Promise<{ ok: boolean; data: ClaimPayload }> {
+  try {
+    const response = await fetchImpl(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+      redirect: "manual",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const data = (await response.json().catch(() => null)) as ClaimPayload | null;
+    const payload = data && typeof data === "object" ? data : {};
+    return { ok: response.ok && payload.ok === true, data: payload };
+  } catch {
+    return { ok: false, data: {} };
+  }
+}
+
+/**
+ * Browser submit. Reserve the address, email Web3Forms, then keep the reserve.
+ * The success screen is `sent` only. A duplicate is a separate result and does
+ * not call Web3Forms. Anything else is an error, including a filled honeypot.
+ */
+export async function deliverWaitlist(
+  input: unknown,
+  accessKey: string | undefined,
+  fetchImpl: typeof fetch = fetch,
+): Promise<WaitlistSubmitResult> {
+  const parsed = parseWaitlist(input);
+  if (!parsed.ok) return { status: "error", error: parsed.error };
+  if (parsed.spam) return { status: "error", error: SAVE_ERROR };
+
+  const key = accessKey?.trim() ?? "";
+  if (!key) {
+    console.error("[tydlii waitlist] Web3Forms access key is not set");
+    return { status: "error", error: SAVE_ERROR };
+  }
+
+  const claim = await postJson(fetchImpl, "/api/waitlist", input);
+  if (claim.data.duplicate === true && claim.ok) return { status: "duplicate" };
+  const claimId = claim.data.claimId;
+  if (!claim.ok || claim.data.spam === true || claim.data.claimed !== true || typeof claimId !== "string") {
+    const error = typeof claim.data.error === "string" && claim.data.error ? claim.data.error : SAVE_ERROR;
+    return { status: "error", error };
+  }
+
+  const record: WaitlistRecord = {
+    ...parsed.value,
+    createdAt: new Date().toISOString(),
+    source: "tydlii.com",
+  };
+  const sent = await submitWeb3Forms(record, key, fetchImpl);
+  if (!sent.ok) {
+    await postJson(fetchImpl, "/api/waitlist/release", { email: parsed.value.email, claimId });
+    return { status: "error", error: sent.error };
+  }
+
+  const confirmBody = { email: parsed.value.email, claimId };
+  const confirmed = await postJson(fetchImpl, "/api/waitlist/confirm", confirmBody);
+  if (!confirmed.ok) await postJson(fetchImpl, "/api/waitlist/confirm", confirmBody);
+  return { status: "sent" };
 }
 
 /**
