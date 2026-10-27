@@ -108,13 +108,14 @@ export function renderWelcomeEmail(input: {
     REFERRAL_CREDIT_PROMISE,
     "Refer a friend or family. When they finish their first paid clean, you each get $25 in account credit. It is not cash, and it cannot be used before that clean.",
     "",
-    `Get your referral link: ${input.shareUrl}`,
+    `Get your referral link: ${input.manageUrl}`,
     `Copy your link: ${input.manageUrl}`,
+    input.shareUrl,
   ].join("\n");
 
-  // Gmail on iPhone drops a CSS `background` shorthand and inverts #070707 to white,
-  // which hides the white wordmark. bgcolor, background-color, and a same-color
-  // gradient are what keep this strip ink.
+  // Mobile Gmail/iOS strips or inverts a CSS background, which leaves the white
+  // wordmark on white. bgcolor, background-color, and a same-color gradient on
+  // this nested ink table keep #070707 so the wordmark stays visible.
   const inkStyle = "background-color:#070707;background-image:linear-gradient(#070707,#070707);";
   // One shared row. The fill sits on the cell, not an inner table, so a one-line
   // label cannot shrink its pill below the two-line labels.
@@ -225,7 +226,7 @@ export function renderWelcomeEmail(input: {
                     <p style="margin:16px 0 0;font-size:18px;line-height:1.4;font-weight:700;">${promise}</p>
                     <p style="margin:12px 0 0;font-size:16px;line-height:1.45;">Refer a friend or family. When they finish their first paid clean, you each get $25 in account credit. It is not cash, and it cannot be used before that clean.</p>
                     <p style="margin:22px 0 0;">
-                      <a href="${shareUrl}" style="display:inline-block;background:#070707;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;line-height:1;padding:16px 28px;border-radius:999px;">Get your referral link</a>
+                      <a href="${manageUrl}" style="display:inline-block;background:#070707;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;line-height:1;padding:16px 28px;border-radius:999px;">Get your referral link</a>
                     </p>
                     <p style="margin:16px 0 0;font-size:14px;line-height:1.4;"><a href="${manageUrl}" style="color:#067a86;font-weight:700;">Copy your link</a><br><a href="${shareUrl}" style="color:#067a86;word-break:break-all;">${shareUrl}</a></p>
                   </td>
