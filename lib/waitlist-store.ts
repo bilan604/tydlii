@@ -6,6 +6,7 @@ import {
   REFERRAL_CODE_LENGTH,
   REFERRAL_CREDIT_CENTS,
   REFERRAL_CREDIT_CURRENCY,
+  REFERRAL_FRIEND_DISCOUNT_CENTS,
   applyEarnedCredit,
   decideReferral,
   earnPendingCredits,
@@ -46,6 +47,11 @@ export type StoreEntry = {
   referredByCode: string | null;
   /** Referrer email once a code matches a confirmed customer. */
   referredByEmail: string | null;
+  /**
+   * $25 off this friend's first booking, in cents. Null when they were not
+   * referred. This is not an account credit and is not earned after the clean.
+   */
+  firstCleanDiscountCents: number | null;
 };
 
 type StoreFile = {
@@ -225,8 +231,9 @@ function confirmedCustomerByCode(file: StoreFile, code: string): StoreEntry | nu
 
 /**
  * Assign this customer's code and, when the friend code is valid, store
- * referredBy and open one pending credit pair. A second credit for the same
- * referred email is refused. Self-referral is refused. Cleaners never call this.
+ * referredBy, record $25 off their first booking, and open one pending
+ * referrer credit. A second credit for the same referred email is refused.
+ * Self-referral (same email, same household) is refused. Cleaners never call this.
  */
 function attachCustomerReferral(file: StoreFile, current: StoreEntry, at: string): CustomerReferral {
   const code = current.referralCode ?? uniqueReferralCode(file);
@@ -266,10 +273,13 @@ function attachCustomerReferral(file: StoreFile, current: StoreEntry, at: string
       earnedBookingId: null,
       appliedBookingId: null,
     };
-    file.credits.push(
-      { ...shared, id: randomUUID(), beneficiaryEmail: decision.referrerEmail, role: "referrer" },
-      { ...shared, id: randomUUID(), beneficiaryEmail: current.email, role: "friend" },
-    );
+    current.firstCleanDiscountCents = REFERRAL_FRIEND_DISCOUNT_CENTS;
+    file.credits.push({
+      ...shared,
+      id: randomUUID(),
+      beneficiaryEmail: decision.referrerEmail,
+      role: "referrer",
+    });
   }
 
   return {
@@ -278,7 +288,8 @@ function attachCustomerReferral(file: StoreFile, current: StoreEntry, at: string
     manageUrl: referralManageUrl(code),
     referredByCode: current.referredByCode,
     referredByEmail: current.referredByEmail,
-    creditsCreated: decision.ok ? 2 : 0,
+    friendDiscountCents: decision.ok ? REFERRAL_FRIEND_DISCOUNT_CENTS : 0,
+    creditsCreated: decision.ok ? 1 : 0,
   };
 }
 
@@ -306,6 +317,10 @@ function asEntry(value: unknown): StoreEntry | null {
     referralCode: normalizeReferralCode(entry.referralCode) || null,
     referredByCode: normalizeReferralCode(entry.referredByCode) || null,
     referredByEmail: typeof entry.referredByEmail === "string" ? normalizeEmail(entry.referredByEmail) : null,
+    firstCleanDiscountCents:
+      typeof entry.firstCleanDiscountCents === "number" && entry.firstCleanDiscountCents > 0
+        ? entry.firstCleanDiscountCents
+        : null,
   };
 }
 
@@ -396,6 +411,7 @@ function snapshot(
     referralCode: null,
     referredByCode: signup.type === "customer" ? referralCode : null,
     referredByEmail: null,
+    firstCleanDiscountCents: null,
   };
 }
 

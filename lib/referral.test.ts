@@ -8,7 +8,10 @@ import {
   REFERRAL_ALPHABET,
   REFERRAL_CREDIT_CENTS,
   REFERRAL_CREDIT_PROMISE,
+  REFERRAL_FRIEND_DISCOUNT_CENTS,
+  REFERRAL_FRIEND_OFFER,
   decideReferral,
+  earnPendingCredits,
   normalizeReferralCode,
   referralLandingUrl,
   referralManageUrl,
@@ -62,7 +65,10 @@ test("codes are normalized and links use the code", () => {
   assert.equal(referralManageUrl(code), "https://tydlii.com/refer?code=k7m2pqrs");
   assert.equal(referralLandingUrl("K7M2PQRS", "http://localhost:3000/r/K7M2PQRS"), "http://localhost:3000/?ref=k7m2pqrs");
   assert.equal(referralLandingUrl("nope", "http://localhost:3000/r/nope"), "http://localhost:3000/");
-  assert.match(REFERRAL_CREDIT_PROMISE, /Both get \$25 credit after their first paid clean/);
+  assert.match(REFERRAL_CREDIT_PROMISE, /\$25 off their first clean/);
+  assert.match(REFERRAL_CREDIT_PROMISE, /\$25 account credit after that clean is paid/);
+  assert.match(REFERRAL_FRIEND_OFFER, /\$25 off your first clean/);
+  assert.doesNotMatch(REFERRAL_CREDIT_PROMISE, /Both get \$25/);
 });
 
 test("self-referral and a second credit for the same friend are refused", () => {
@@ -95,7 +101,31 @@ test("self-referral and a second credit for the same friend are refused", () => 
   );
 });
 
-test("a customer gets a code, a friend stores referred_by, and both credits stay pending until the first paid clean", async () => {
+test("a legacy friend credit is not earned as account credit", () => {
+  const pending = {
+    id: "friend-row",
+    beneficiaryEmail: "ari@example.com",
+    referredEmail: "ari@example.com",
+    referrerEmail: "mina@example.com",
+    code: "k7m2pqrs",
+    role: "friend" as const,
+    amountCents: REFERRAL_CREDIT_CENTS,
+    currency: "CAD" as const,
+    status: "pending" as const,
+    createdAt: "2026-10-26T12:00:00.000Z",
+    earnedAt: null,
+    appliedAt: null,
+    earnedBookingId: null,
+    appliedBookingId: null,
+  };
+  const referrer = { ...pending, id: "referrer-row", beneficiaryEmail: "mina@example.com", role: "referrer" as const };
+  const earned = earnPendingCredits([referrer, pending], "ari@example.com", "booking-1", "2026-10-27T00:00:00.000Z");
+  assert.equal(earned.earned, 1);
+  assert.equal(earned.credits.find((credit) => credit.role === "referrer")?.status, "earned");
+  assert.equal(earned.credits.find((credit) => credit.role === "friend")?.status, "pending");
+});
+
+test("a friend gets $25 off and the referrer credit stays pending until that clean is paid", async () => {
   const { dir, filePath } = await tempFile();
   try {
     const store = storeAt(filePath);
@@ -111,10 +141,12 @@ test("a customer gets a code, a friend stores referred_by, and both credits stay
     assert.ok(referred.referral);
     assert.equal(referred.referral.referredByEmail, "mina@example.com");
     assert.equal(referred.referral.referredByCode, code);
-    assert.equal(referred.referral.creditsCreated, 2);
+    assert.equal(referred.referral.creditsCreated, 1);
+    assert.equal(referred.referral.friendDiscountCents, REFERRAL_FRIEND_DISCOUNT_CENTS);
     assert.notEqual(referred.referral.code, code);
 
     const file = JSON.parse(await readFile(filePath, "utf8")) as {
+      entries: Record<string, { firstCleanDiscountCents: number | null }>;
       credits: {
         id: string;
         status: string;
@@ -124,24 +156,20 @@ test("a customer gets a code, a friend stores referred_by, and both credits stay
         role: string;
       }[];
     };
-    assert.equal(file.credits.length, 2);
-    assert.deepEqual(
-      file.credits.map((credit) => credit.status),
-      ["pending", "pending"],
-    );
-    assert.ok(file.credits.every((credit) => credit.amountCents === REFERRAL_CREDIT_CENTS));
-    assert.deepEqual(
-      file.credits.map((credit) => credit.beneficiaryEmail).sort(),
-      ["ari@example.com", "mina@example.com"],
-    );
-    assert.ok(file.credits.every((credit) => credit.referredEmail === "ari@example.com"));
+    assert.equal(file.entries["ari@example.com"].firstCleanDiscountCents, REFERRAL_FRIEND_DISCOUNT_CENTS);
+    assert.equal(file.credits.length, 1);
+    assert.equal(file.credits[0].status, "pending");
+    assert.equal(file.credits[0].role, "referrer");
+    assert.equal(file.credits[0].beneficiaryEmail, "mina@example.com");
+    assert.equal(file.credits[0].referredEmail, "ari@example.com");
+    assert.equal(file.credits[0].amountCents, REFERRAL_CREDIT_CENTS);
 
     const blocked = await applyReferralCredit(file.credits[0].id, "invoice-1", store);
     assert.equal(blocked.status, "not-earned");
     assert.equal((await applyReferralCredit("missing-credit", "invoice-1", store)).status, "missing");
 
     const earned = await earnReferralCreditsForFirstPaidClean("Ari@Example.com", "booking-1", store);
-    assert.deepEqual(earned, { status: "ok", earned: 2 });
+    assert.deepEqual(earned, { status: "ok", earned: 1 });
     const again = await earnReferralCreditsForFirstPaidClean("ari@example.com", "booking-2", store);
     assert.deepEqual(again, { status: "ok", earned: 0 });
     assert.deepEqual(await store.earnFirstPaidClean("ari@example.com", " "), { status: "invalid" });
@@ -151,19 +179,20 @@ test("a customer gets a code, a friend stores referred_by, and both credits stay
     };
     assert.deepEqual(
       after.credits.map((credit) => credit.status),
-      ["earned", "earned"],
+      ["earned"],
     );
+    assert.equal(after.credits[0].role, "referrer");
     assert.ok(after.credits.every((credit) => credit.earnedBookingId === "booking-1"));
 
     const applied = await applyReferralCredit(after.credits[0].id, "invoice-9", store);
     assert.equal(applied.status, "applied");
     assert.equal((await applyReferralCredit(after.credits[0].id, "invoice-10", store)).status, "already");
-    const other = after.credits[1];
     const stillEarned = JSON.parse(await readFile(filePath, "utf8")) as {
-      credits: { id: string; status: string }[];
+      credits: { id: string; status: string; role: string }[];
     };
-    assert.equal(stillEarned.credits.find((credit) => credit.id === other.id)?.status, "earned");
-    assert.equal(stillEarned.credits.find((credit) => credit.id === after.credits[0].id)?.status, "applied");
+    assert.equal(stillEarned.credits.length, 1);
+    assert.equal(stillEarned.credits[0].role, "referrer");
+    assert.equal(stillEarned.credits[0].status, "applied");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -205,7 +234,7 @@ test("a second referrer does not open another credit for the same friend", async
     assert.equal(rejoined.referral.creditsCreated, 0);
     assert.equal(rejoined.referral.referredByEmail, "mina@example.com");
     const file = JSON.parse(await readFile(filePath, "utf8")) as { credits: unknown[] };
-    assert.equal(file.credits.length, 2);
+    assert.equal(file.credits.length, 1);
     const lookup = await store.lookupReferral(first.referral.code.toUpperCase());
     assert.equal(lookup.status, "found");
     if (lookup.status === "found") assert.equal(lookup.name, "Mina Chen");

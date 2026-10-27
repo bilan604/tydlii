@@ -4,7 +4,12 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AREAS, type AreaName } from "@/lib/areas";
 import { cad } from "@/lib/format";
 import type { Frequency } from "@/lib/pricing";
-import { REFERRAL_CREDIT_PROMISE, REFERRAL_STORAGE_KEY, referralCodeFromInput } from "@/lib/referral";
+import {
+  REFERRAL_CREDIT_PROMISE,
+  REFERRAL_FRIEND_OFFER,
+  REFERRAL_STORAGE_KEY,
+  referralCodeFromInput,
+} from "@/lib/referral";
 import { HONEYPOT_FIELD } from "@/lib/waitlist";
 import {
   SAVE_ERROR,
@@ -301,7 +306,7 @@ export function CustomerWaitlist({
             <Check>{REFERRAL_CREDIT_PROMISE}</Check>
           </div>
           {referred ? (
-            <p className="form-hint">A friend referred you. {REFERRAL_CREDIT_PROMISE}</p>
+            <p className="form-hint">A friend referred you. {REFERRAL_FRIEND_OFFER}</p>
           ) : null}
         </div>
         {status === "done" ? (

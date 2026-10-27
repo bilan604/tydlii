@@ -1,22 +1,36 @@
 import { SITE } from "./site";
 
 /**
- * Referral codes and credit rules for customer waitlist invites.
+ * Referral codes and the two-sided offer.
  *
- * A friend who joins with a code is stored with `referredBy`. Both people get
- * a $25 account credit that stays `pending` until that friend completes a
- * first paid clean, then `earned`. Applying the credit to an invoice is a
- * later step and refuses anything still pending. Nothing here is cash.
+ * Friend (the person who joins with `?ref=CODE`): $25 off their first booking.
+ * That discount is `firstCleanDiscountCents` on their signup. It is not an
+ * account credit and it is not earned after the clean.
+ *
+ * Referrer (the person who shared the code): one $25 account credit. It stays
+ * `pending` until that friend's first clean is paid, then `earned`. Applying it
+ * to a later invoice is a separate step and refuses anything still pending.
+ *
+ * Nothing is cash. One referred email can open one referrer credit. The same
+ * normalized email cannot refer itself (that is the same-household block). A
+ * cleaner signup ignores `ref`. `referredBy` is stored on the friend.
  */
 
 export const REFERRAL_CREDIT_CENTS = 2500;
+/** Price reduction on the friend's first booking. Same dollars as the referrer credit, different instrument. */
+export const REFERRAL_FRIEND_DISCOUNT_CENTS = 2500;
 export const REFERRAL_CREDIT_CURRENCY = "CAD" as const;
 export const REFERRAL_CODE_LENGTH = 8;
 
 /** No 0/o, 1/l/i. Codes are case-insensitive and stored lowercase. */
 export const REFERRAL_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
-export const REFERRAL_CREDIT_PROMISE = "Both get $25 credit after their first paid clean.";
+/** Referrer-facing offer: welcome email, /refer, and the post-signup note. */
+export const REFERRAL_CREDIT_PROMISE =
+  "Your friend gets $25 off their first clean. You get $25 account credit after that clean is paid.";
+
+/** Friend-facing offer, shown when this signup arrived with `?ref=`. */
+export const REFERRAL_FRIEND_OFFER = "You get $25 off your first clean. It is not cash.";
 
 /** sessionStorage key for a `?ref=` code captured on the homepage. */
 export const REFERRAL_STORAGE_KEY = "tydlii.ref";
@@ -28,9 +42,12 @@ export type ReferralCreditRole = "referrer" | "friend";
 
 export type ReferralCredit = {
   id: string;
-  /** Who receives the $25 account credit. */
+  /**
+   * Who receives the $25 account credit. New rows are only the referrer.
+   * A legacy `friend` row is not an account credit and must not be earned.
+   */
   beneficiaryEmail: string;
-  /** The friend whose first paid clean earns both credits. */
+  /** The friend whose paid first clean earns the referrer's credit. */
   referredEmail: string;
   /** The customer who shared the code. */
   referrerEmail: string;
@@ -56,6 +73,9 @@ export type CustomerReferral = {
   manageUrl: string;
   referredByCode: string | null;
   referredByEmail: string | null;
+  /** $25 off this signup's first booking, in cents. 0 when they were not referred. */
+  friendDiscountCents: number;
+  /** Referrer account credits opened by this confirm. 0 or 1. */
   creditsCreated: number;
 };
 
@@ -151,9 +171,10 @@ export type ReferralDecision =
   | { ok: false; reason: "none" | "unknown" | "self" | "already-credited" };
 
 /**
- * Whether a friend signup may store `referredBy` and open a new credit pair.
+ * Whether a friend signup may store `referredBy` and open the referrer's credit.
  * `already-credited` means this referred email already has a credit, so a
- * second referrer does not get one. Self-referral is the same normalized email.
+ * second referrer does not get one. Self-referral is the same normalized email,
+ * which is the same-household block. One email, one referrer credit.
  */
 export function decideReferral(input: {
   signupEmail: string;
@@ -168,6 +189,11 @@ export function decideReferral(input: {
   return { ok: true, referrerEmail: input.referrerEmail, referredByCode: input.requestedCode };
 }
 
+/**
+ * Earn the referrer's pending account credit when the friend's first clean is
+ * paid. A `friend` row is the old shape and is not account credit, so it stays
+ * pending and cannot be applied. The friend's $25 off is a first-booking discount.
+ */
 export function earnPendingCredits(
   credits: readonly ReferralCredit[],
   referredEmail: string,
@@ -176,6 +202,7 @@ export function earnPendingCredits(
 ): { credits: ReferralCredit[]; earned: number } {
   let earned = 0;
   const next = credits.map((credit) => {
+    if (credit.role !== "referrer") return credit;
     if (credit.referredEmail !== referredEmail || credit.status !== "pending") return credit;
     earned += 1;
     return {
