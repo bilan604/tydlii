@@ -33,10 +33,14 @@ test("the welcome matches the locked creative and the credit rules", () => {
   assert.match(cta[1], /\/refer\?code=/);
   assert.doesNotMatch(cta[1], /\?ref=/);
   assert.match(cta[2], /background:#070707/);
-  assert.match(message.html, new RegExp(`href="${shareUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
-  assert.match(message.html, new RegExp(`>${shareUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<`));
+  const links = [...message.html.matchAll(/<a href="([^"]+)"/g)];
+  assert.equal(links.length, 1);
+  assert.equal(links[0][1], manageUrl);
+  assert.doesNotMatch(message.html, /Copy your link/);
+  assert.doesNotMatch(message.html, /\?ref=/);
   assert.match(message.text, new RegExp(`Get your referral link: ${manageUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-  assert.doesNotMatch(message.text, /Get your referral link: https:\/\/tydlii\.com\/\?ref=/);
+  assert.doesNotMatch(message.text, /Copy your link/);
+  assert.doesNotMatch(message.text, /\?ref=/);
   assert.match(message.html, /#070707/);
   assert.match(message.html, /#5c9396/);
   const header = message.html.slice(0, message.html.indexOf("cid:tydlii-welcome-hero"));
@@ -74,7 +78,7 @@ test("the welcome matches the locked creative and the credit rules", () => {
   assert.doesNotMatch(message.html, /neighbourhood/i);
   assert.doesNotMatch(message.html, /\$25 off/);
   assert.ok(message.text.includes(REFERRAL_CREDIT_PROMISE));
-  assert.ok(message.text.includes(shareUrl));
+  assert.equal(message.text.includes(shareUrl), false);
   const hostile = renderWelcomeEmail({
     shareUrl: "https://tydlii.com/?ref=k7m2pqrs",
     manageUrl: "https://tydlii.com/refer?code=k7m2pqrs&amp;x=<script>",

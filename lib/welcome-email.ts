@@ -85,12 +85,12 @@ async function cidImage(
 }
 
 export function renderWelcomeEmail(input: {
+  /** Callers still pass the friend share URL. The message does not print it. */
   shareUrl: string;
   manageUrl: string;
   heroSrc: string;
   wordmarkSrc: string;
 }): { subject: string; html: string; text: string } {
-  const shareUrl = escapeHtml(input.shareUrl);
   const manageUrl = escapeHtml(input.manageUrl);
   const heroSrc = escapeHtml(input.heroSrc);
   const wordmarkSrc = escapeHtml(input.wordmarkSrc);
@@ -109,8 +109,6 @@ export function renderWelcomeEmail(input: {
     "Refer a friend or family. When they finish their first paid clean, you each get $25 in account credit. It is not cash, and it cannot be used before that clean.",
     "",
     `Get your referral link: ${input.manageUrl}`,
-    `Copy your link: ${input.manageUrl}`,
-    input.shareUrl,
   ].join("\n");
 
   // Mobile Gmail/iOS strips or inverts a CSS background, which leaves the white
@@ -228,7 +226,6 @@ export function renderWelcomeEmail(input: {
                     <p style="margin:22px 0 0;">
                       <a href="${manageUrl}" style="display:inline-block;background:#070707;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;line-height:1;padding:16px 28px;border-radius:999px;">Get your referral link</a>
                     </p>
-                    <p style="margin:16px 0 0;font-size:14px;line-height:1.4;"><a href="${manageUrl}" style="color:#067a86;font-weight:700;">Copy your link</a><br><a href="${shareUrl}" style="color:#067a86;word-break:break-all;">${shareUrl}</a></p>
                   </td>
                 </tr>
               </table>
