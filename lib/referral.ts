@@ -27,10 +27,10 @@ export const REFERRAL_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
 /** Referrer-facing offer: welcome email, /refer, and the post-signup note. */
 export const REFERRAL_CREDIT_PROMISE =
-  "Your friend gets $25 off their first clean. You get $25 account credit after that clean is paid.";
+  "Your friend gets $25 off their first clean. You get $25 account credit after their first cleaning using Tydlii.";
 
 /** Friend-facing offer, shown when this signup arrived with `?ref=`. */
-export const REFERRAL_FRIEND_OFFER = "You get $25 off your first clean. It is not cash.";
+export const REFERRAL_FRIEND_OFFER = "You get $25 off your first clean.";
 
 /** sessionStorage key for a `?ref=` code captured on the homepage. */
 export const REFERRAL_STORAGE_KEY = "tydlii.ref";

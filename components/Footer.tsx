@@ -7,7 +7,7 @@ export function Footer() {
         <a href="/" aria-label="Tydlii">
           <Wordmark variant="ink" className="footer-logo" />
         </a>
-        <p>Every clean, guaranteed. · Toronto, Ontario · Prices before HST</p>
+        <p>Tydlii clean guaranteed. · Toronto, Ontario · Est. 2026</p>
       </div>
     </footer>
   );

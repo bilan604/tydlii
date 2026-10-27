@@ -80,7 +80,13 @@ test("the welcome matches the locked creative and the credit rules", () => {
   assert.match(message.html, /background:#e5f3f4;border-radius:28px;/);
   assert.doesNotMatch(message.html, /neighbourhood/i);
   assert.match(message.html, /\$25 off their first clean/);
+  assert.match(message.html, /after their first cleaning using Tydlii/);
   assert.match(message.text, /The \$25 off applies to their first booking/);
+  assert.match(message.text, /after their first cleaning using Tydlii/);
+  assert.doesNotMatch(message.html, /after that clean is paid/);
+  assert.doesNotMatch(message.text, /after that clean is paid/);
+  assert.doesNotMatch(message.html, /It is not cash/);
+  assert.doesNotMatch(message.text, /It is not cash/);
   assert.ok(message.text.includes(REFERRAL_CREDIT_PROMISE));
   assert.equal(message.text.includes(shareUrl), false);
   const hostile = renderWelcomeEmail({
@@ -179,7 +185,13 @@ test("Resend is posted only when both env vars are set, and a non-2xx does not t
   assert.equal(body.subject, WELCOME_SUBJECT);
   assert.match(body.html, /Get your referral link/);
   assert.match(body.html, /cid:tydlii-welcome-hero/);
-  assert.match(body.text, /Your friend gets \$25 off their first clean\. You get \$25 account credit after that clean is paid\./);
+  assert.match(body.text, /Your friend gets \$25 off their first clean\. You get \$25 account credit after their first cleaning using Tydlii\./);
+  assert.match(body.text, /Your \$25 is account credit after their first cleaning using Tydlii\./);
+  assert.match(body.html, /Your \$25 is account credit after their first cleaning using Tydlii\./);
+  assert.doesNotMatch(body.text, /after that clean is paid/);
+  assert.doesNotMatch(body.html, /after that clean is paid/);
+  assert.doesNotMatch(body.text, /It is not cash/);
+  assert.doesNotMatch(body.html, /It is not cash/);
   assert.doesNotMatch(body.text, /Copy your link/);
   assert.doesNotMatch(body.html, /Copy your link/);
   assert.deepEqual(

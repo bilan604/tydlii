@@ -35,7 +35,7 @@ export default async function ReferPage({
           <>
             <h1>{firstName ? `${firstName}, your referral link.` : "Your referral link."}</h1>
             <p className="refer-lead">
-              Share this link with a friend or family member. <strong>{REFERRAL_CREDIT_PROMISE}</strong> It is not cash.
+              Share this link with a friend or family member. <strong>{REFERRAL_CREDIT_PROMISE}</strong>
             </p>
             <CopyReferral url={shareUrl} />
           </>

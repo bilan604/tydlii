@@ -106,7 +106,7 @@ export function renderWelcomeEmail(input: {
     "",
     "You get $25. Your friend gets $25 off.",
     REFERRAL_CREDIT_PROMISE,
-    "Refer a friend or family. The $25 off applies to their first booking. Your $25 is account credit after that clean is paid. It is not cash.",
+    "Refer a friend or family. The $25 off applies to their first booking. Your $25 is account credit after their first cleaning using Tydlii.",
     "",
     `Get your referral link: ${input.manageUrl}`,
   ].join("\n");
@@ -222,7 +222,7 @@ export function renderWelcomeEmail(input: {
                   <td align="center" style="padding:32px 28px 28px;font-family:Avenir Next,Segoe UI,Helvetica,Arial,sans-serif;color:#141414;">
                     <p style="margin:0;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-0.03em;">You get $25.<br>Your friend gets $25 off.</p>
                     <p style="margin:16px 0 0;font-size:18px;line-height:1.4;font-weight:700;">${promise}</p>
-                    <p style="margin:12px 0 0;font-size:16px;line-height:1.45;">Refer a friend or family. The $25 off applies to their first booking. Your $25 is account credit after that clean is paid. It is not cash.</p>
+                    <p style="margin:12px 0 0;font-size:16px;line-height:1.45;">Refer a friend or family. The $25 off applies to their first booking. Your $25 is account credit after their first cleaning using Tydlii.</p>
                     <p style="margin:22px 0 0;">
                       <a href="${manageUrl}" style="display:inline-block;background:#070707;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;line-height:1;padding:16px 28px;border-radius:999px;">Get your referral link</a>
                     </p>
