@@ -66,9 +66,20 @@ test("codes are normalized and links use the code", () => {
   assert.equal(referralLandingUrl("K7M2PQRS", "http://localhost:3000/r/K7M2PQRS"), "http://localhost:3000/?ref=k7m2pqrs");
   assert.equal(referralLandingUrl("nope", "http://localhost:3000/r/nope"), "http://localhost:3000/");
   assert.match(REFERRAL_CREDIT_PROMISE, /\$25 off their first clean/);
-  assert.match(REFERRAL_CREDIT_PROMISE, /\$25 account credit after that clean is paid/);
-  assert.match(REFERRAL_FRIEND_OFFER, /\$25 off your first clean/);
+  assert.match(REFERRAL_CREDIT_PROMISE, /\$25 account credit after their first cleaning using Tydlii/);
+  assert.doesNotMatch(REFERRAL_CREDIT_PROMISE, /after that clean is paid/);
+  assert.doesNotMatch(REFERRAL_CREDIT_PROMISE, /It is not cash/);
+  assert.equal(REFERRAL_FRIEND_OFFER, "You get $25 off your first clean.");
+  assert.doesNotMatch(REFERRAL_FRIEND_OFFER, /It is not cash/);
   assert.doesNotMatch(REFERRAL_CREDIT_PROMISE, /Both get \$25/);
+});
+
+test("the refer page uses the shared offer and does not say it is not cash", async () => {
+  const source = await readFile(new URL("../app/refer/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /REFERRAL_CREDIT_PROMISE/);
+  assert.doesNotMatch(source, /It is not cash/);
+  assert.doesNotMatch(source, /after that clean is paid/);
+  assert.doesNotMatch(source, /Prices before HST/);
 });
 
 test("self-referral and a second credit for the same friend are refused", () => {
