@@ -25,7 +25,10 @@ test("the welcome matches the locked creative and the credit rules", () => {
   assert.match(message.html, /Eco-Friendly/);
   assert.match(message.html, /On-Demand<br>Booking/);
   assert.match(message.html, /You get \$25\./);
-  assert.match(message.html, /Your friend gets \$25\./);
+  assert.match(message.html, /Your friend gets \$25 off\./);
+  assert.match(message.html, /\$25 off/);
+  assert.doesNotMatch(message.html, /you each get \$25/i);
+  assert.doesNotMatch(message.html, /Both get \$25 credit/);
   assert.match(message.html, new RegExp(REFERRAL_CREDIT_PROMISE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   const cta = message.html.match(/<a href="([^"]+)" style="([^"]+)">Get your referral link<\/a>/);
   assert.ok(cta);
@@ -73,10 +76,11 @@ test("the welcome matches the locked creative and the credit rules", () => {
     message.html,
     /<img src="cid:tydlii-welcome-hero" width="600" alt="A customer with her dog on the couch after a Tydlii clean"/,
   );
-  assert.match(message.html, /You get \$25\.<br>Your friend gets \$25\./);
+  assert.match(message.html, /You get \$25\.<br>Your friend gets \$25 off\./);
   assert.match(message.html, /background:#e5f3f4;border-radius:28px;/);
   assert.doesNotMatch(message.html, /neighbourhood/i);
-  assert.doesNotMatch(message.html, /\$25 off/);
+  assert.match(message.html, /\$25 off their first clean/);
+  assert.match(message.text, /The \$25 off applies to their first booking/);
   assert.ok(message.text.includes(REFERRAL_CREDIT_PROMISE));
   assert.equal(message.text.includes(shareUrl), false);
   const hostile = renderWelcomeEmail({
@@ -175,7 +179,9 @@ test("Resend is posted only when both env vars are set, and a non-2xx does not t
   assert.equal(body.subject, WELCOME_SUBJECT);
   assert.match(body.html, /Get your referral link/);
   assert.match(body.html, /cid:tydlii-welcome-hero/);
-  assert.match(body.text, /Both get \$25 credit after their first paid clean\./);
+  assert.match(body.text, /Your friend gets \$25 off their first clean\. You get \$25 account credit after that clean is paid\./);
+  assert.doesNotMatch(body.text, /Copy your link/);
+  assert.doesNotMatch(body.html, /Copy your link/);
   assert.deepEqual(
     body.attachments.map((item) => item.content_id).sort(),
     ["tydlii-welcome-hero", "tydlii-wordmark"],

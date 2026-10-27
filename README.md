@@ -55,7 +55,7 @@ The browser posts straight to `https://api.web3forms.com/submit`. Render's outbo
 
 When a **customer** confirm succeeds, the server sends that person a branded welcome email. Cleaners do not get one. The team Web3Forms alert is unchanged, except a customer message also lists `referredByCode` when they arrived with `?ref=`.
 
-The welcome matches the locked creative: black header, white smile wordmark, the woman-and-dog photo, teal field (`#070707` / `#5c9396`, accent `#04a3ac`), “More living. Less cleaning.”, the three benefit pills, and a referral card. The button says **Get your referral link** and is the only link in the email. It opens the referrer’s manage page, `https://tydlii.com/refer?code=CODE`. The card says **Both get $25 credit after their first paid clean.** It does not say “$25 off” and it does not ask for a neighbourhood.
+The welcome matches the locked creative: black header, white smile wordmark, the woman-and-dog photo, teal field (`#070707` / `#5c9396`, accent `#04a3ac`), “More living. Less cleaning.”, the three benefit pills, and a referral card. The button says **Get your referral link** and is the only link in the email. It opens the referrer’s manage page, `https://tydlii.com/refer?code=CODE`. The card says the friend gets **$25 off their first clean** and the referrer gets **$25 account credit after that clean is paid.** It does not ask for a neighbourhood.
 
 Web3Forms cannot address the customer. The welcome uses [Resend](https://resend.com). Both variables are optional. If either is missing, or Resend returns an error, the server logs `[tydlii welcome] …` and the signup still succeeds. The referral link is included in that log so it can be opened without an inbox.
 
@@ -74,17 +74,17 @@ Render steps (do this before relying on the inbox; the waitlist works without th
 
 Each confirmed customer gets a unique code. Friends open `https://tydlii.com/?ref=CODE` or `https://tydlii.com/r/CODE` (that path redirects to `/?ref=`). The homepage remembers the code for the tab and the customer form sends it as `ref`. On confirm, a matching code stores `referredByEmail` on the friend. A cleaner signup ignores `ref`.
 
-Credits live in the same JSON file, under `credits`, so they share the waitlist lock:
+The friend and the referrer are not paid the same way. The friend’s $25 off is `firstCleanDiscountCents` on their signup and applies to the first booking. It is not an account credit. The referrer’s $25 is one row under `credits`, so it shares the waitlist lock:
 
 | Status | Meaning |
 | --- | --- |
-| `pending` | Created when the friend joins. Not usable yet. |
-| `earned` | The referred friend completed a **first paid clean**. Both the referrer and the friend have a $25 account credit (`amountCents: 2500`, `CAD`). |
-| `applied` | A later invoice used an earned credit. |
+| `pending` | Created for the referrer when the friend joins. Not usable yet. |
+| `earned` | The friend’s first clean is **paid**. Only the referrer’s account credit (`amountCents: 2500`, `CAD`) moves here. |
+| `applied` | A later invoice used that earned credit. |
 
-There is no cash payout and no public route that changes status. `applyReferralCredit` refuses a `pending` credit. The same referred email can open only one credit pair. A second code, or the person’s own email, does not create another. Self-referral is the same normalized email; a duplicate signup is already blocked.
+There is no cash payout and no public route that changes status. `applyReferralCredit` refuses a `pending` credit. The same referred email can open only one referrer credit. A second code, or the person’s own email, does not create another. Self-referral is the same normalized email (the same-household block); a duplicate signup is already blocked.
 
-Bookings and payments are not in this app. When they exist, call this from the server path that records the referred customer’s first paid clean (payment captured and the clean completed), not for a quote or a cancellation:
+Bookings and payments are not in this app. When they exist, subtract `firstCleanDiscountCents` from the friend’s first invoice, then call this from the server path that records that clean as paid (payment captured and the clean completed), not for a quote or a cancellation:
 
 ```ts
 import { earnReferralCreditsForFirstPaidClean } from "@/lib/referral-credits";
@@ -92,7 +92,7 @@ import { earnReferralCreditsForFirstPaidClean } from "@/lib/referral-credits";
 await earnReferralCreditsForFirstPaidClean(customerEmail, bookingId);
 ```
 
-That moves every `pending` credit for that referred email to `earned` and stores `bookingId`. Calling it again earns nothing. Later, when an invoice uses the credit:
+That moves the referrer’s `pending` credit for that referred email to `earned` and stores `bookingId`. A friend row is not earned. Calling it again earns nothing. Later, when an invoice uses the referrer’s credit:
 
 ```ts
 import { applyReferralCredit } from "@/lib/referral-credits";
@@ -116,7 +116,7 @@ curl -s -X POST http://localhost:3000/api/waitlist/confirm \
   -d '{"email":"mina@example.com","claimId":"PASTE_CLAIM_ID"}'
 ```
 
-Open the logged `https://tydlii.com/?ref=CODE` shape on localhost (`http://localhost:3000/?ref=CODE`), join as a second email, and confirm that signup the same way. `data/waitlist-emails.json` then has `referredByEmail` and two `pending` credits. `/refer?code=CODE` shows the link and the copy button. `/r/CODE` redirects to `/?ref=CODE`.
+Open the logged `https://tydlii.com/?ref=CODE` shape on localhost (`http://localhost:3000/?ref=CODE`), join as a second email, and confirm that signup the same way. `data/waitlist-emails.json` then has `referredByEmail`, `firstCleanDiscountCents: 2500` on the friend, and one `pending` credit for the referrer. `/refer?code=CODE` shows the link and the copy button. `/r/CODE` redirects to `/?ref=CODE`.
 
 With `RESEND_API_KEY` and `EMAIL_FROM` in `.env.local`, that confirm also sends the HTML welcome. On Render, set those two env vars and restart, then use an email that is not already on the list. Reset a test address from the service shell with `node scripts/reset-waitlist-email.mjs person@example.com`.
 
