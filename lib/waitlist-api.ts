@@ -2,6 +2,7 @@ import { referralCodeFromInput } from "./referral";
 import { parseWaitlist } from "./waitlist";
 import { waitlistStore, type WaitlistStore } from "./waitlist-store";
 import { recordWaitlist, SAVE_ERROR } from "./waitlist-notify";
+import { sendCleanerWelcome, type CleanerWelcomeSender } from "./cleaner-welcome-email";
 import { sendCustomerWelcome, type WelcomeSender } from "./welcome-email";
 
 export type WaitlistHttpResult = {
@@ -66,14 +67,15 @@ export async function claimWaitlistRequest(
 
 /**
  * Keep a reserve after Web3Forms has accepted the signup, then log it.
- * A customer welcome is sent after the row is saved. A mail failure does not
- * change the response. Cleaners are not mailed a welcome.
+ * A customer welcome or a cleaner welcome is sent after the row is saved.
+ * A mail failure does not change the response.
  */
 export async function confirmWaitlistRequest(
   input: unknown,
   store: WaitlistStore = waitlistStore,
   webhookUrl: string | undefined = process.env.WAITLIST_WEBHOOK_URL,
   welcome: WelcomeSender = sendCustomerWelcome,
+  cleanerWelcome: CleanerWelcomeSender = sendCleanerWelcome,
 ): Promise<WaitlistHttpResult> {
   const claim = readClaimId(input);
   if (!claim) return { status: 400, body: { ok: false, error: READ_ERROR } };
@@ -104,6 +106,16 @@ export async function confirmWaitlistRequest(
         });
       } catch (error) {
         console.error("[tydlii welcome] failed", error instanceof Error ? error.message : "");
+      }
+    }
+    if (confirmed.signup.type === "cleaner") {
+      try {
+        await cleanerWelcome({
+          to: confirmed.signup.email,
+          name: confirmed.signup.name,
+        });
+      } catch (error) {
+        console.error("[tydlii cleaner welcome] failed", error instanceof Error ? error.message : "");
       }
     }
   }

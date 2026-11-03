@@ -53,11 +53,17 @@ The browser posts straight to `https://api.web3forms.com/submit`. Render's outbo
 
 ### Customer welcome email
 
-When a **customer** confirm succeeds, the server sends that person a branded welcome email. Cleaners do not get one. The team Web3Forms alert is unchanged, except a customer message also lists `referredByCode` when they arrived with `?ref=`.
+When a **customer** confirm succeeds, the server sends that person a branded welcome email. The team Web3Forms alert is unchanged, except a customer message also lists `referredByCode` when they arrived with `?ref=`.
 
 The welcome matches the locked creative: black header, white smile wordmark, the woman-and-dog photo, teal field (`#070707` / `#5c9396`, accent `#04a3ac`), “More living. Less cleaning.”, the three benefit pills, and a referral card. The button says **Get your referral link** and is the only link in the email. It opens the referrer’s manage page, `https://tydlii.com/refer?code=CODE`. The card says the friend gets **$25 off their first clean** and the referrer gets **$25 account credit after their first cleaning using Tydlii.** It does not ask for a neighbourhood.
 
-Web3Forms cannot address the customer. The welcome uses [Resend](https://resend.com). Both variables are optional. If either is missing, or Resend returns an error, the server logs `[tydlii welcome] …` and the signup still succeeds. The referral link is included in that log so it can be opened without an inbox.
+Web3Forms cannot address the person who joined. Both welcomes use [Resend](https://resend.com). Both variables are optional. If either is missing, or Resend returns an error, the server logs and the signup still succeeds. The customer log is `[tydlii welcome] …` and includes the referral link so it can be opened without an inbox.
+
+### Cleaner welcome email
+
+When a **cleaner** confirm succeeds, the server sends a short welcome. Its only link is **Start onboarding**, and that href is `CLEANER_ONBOARDING_FORM_URL` in `lib/cleaner-onboarding.ts` (the live cleaner onboarding form). The same Resend variables send it. A missing key or a Resend error logs `[tydlii cleaner welcome] …` and does not fail the signup. The customer referral button is unchanged.
+
+After a cleaner joins on the site, the “You're on the cleaner list” screen uses that same constant for **Start onboarding**. The customer success screen does not.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
