@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AREAS, type AreaName } from "@/lib/areas";
+import { CLEANER_ONBOARDING_FORM_URL } from "@/lib/cleaner-onboarding";
 import { cad } from "@/lib/format";
 import type { Frequency } from "@/lib/pricing";
 import {
@@ -196,17 +197,24 @@ function Success({
   title,
   children,
   onReset,
+  cta,
 }: {
   kicker: string;
   title: string;
   children: ReactNode;
   onReset: () => void;
+  cta?: { href: string; label: string };
 }) {
   return (
     <div className="success" role="status">
       <p className="eyebrow">{kicker}</p>
       <h3>{title}</h3>
       <p>{children}</p>
+      {cta ? (
+        <a className="btn btn-navy" href={cta.href}>
+          {cta.label}
+        </a>
+      ) : null}
       <button className="btn btn-line" type="button" onClick={onReset}>
         Submit another
       </button>
@@ -512,6 +520,7 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
           <Success
             kicker="Cleaner list"
             title="You're on the cleaner list."
+            cta={{ href: CLEANER_ONBOARDING_FORM_URL, label: "Start onboarding" }}
             onReset={() => {
               setStatus("idle");
               setConsent(false);

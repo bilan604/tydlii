@@ -82,11 +82,16 @@ test("release lets the same email claim again", async () => {
   }
 });
 
-test("confirming a customer sends the welcome and a cleaner does not", async () => {
+test("confirming a customer sends the welcome and a cleaner gets the onboarding welcome", async () => {
   const { dir, store } = await tempStore();
   const welcomes: { to: string; shareUrl: string }[] = [];
+  const cleanerWelcomes: { to: string; name: string }[] = [];
   const welcome = async (input: { to: string; shareUrl: string }) => {
     welcomes.push(input);
+    return { sent: true };
+  };
+  const cleanerWelcome = async (input: { to: string; name: string }) => {
+    cleanerWelcomes.push(input);
     return { sent: true };
   };
   try {
@@ -97,14 +102,22 @@ test("confirming a customer sends the welcome and a cleaner does not", async () 
       store,
       undefined,
       welcome,
+      cleanerWelcome,
     );
     assert.equal(confirmed.status, 200);
     assert.equal(welcomes.length, 1);
+    assert.equal(cleanerWelcomes.length, 0);
     assert.equal(welcomes[0].to, "mina@example.com");
     assert.match(welcomes[0].shareUrl, /^https:\/\/tydlii\.com\/\?ref=[a-z2-9]+$/);
 
     const cleaner = await claimWaitlistRequest(
-      { ...customer, type: "cleaner", email: "jordan@example.com", neighbourhoods: ["King West", "CityPlace"] },
+      {
+        ...customer,
+        type: "cleaner",
+        name: "Jordan Hale",
+        email: "jordan@example.com",
+        neighbourhoods: ["King West", "CityPlace"],
+      },
       store,
     );
     assert.equal(cleaner.body.claimed, true);
@@ -113,8 +126,10 @@ test("confirming a customer sends the welcome and a cleaner does not", async () 
       store,
       undefined,
       welcome,
+      cleanerWelcome,
     );
     assert.equal(welcomes.length, 1);
+    assert.deepEqual(cleanerWelcomes, [{ to: "jordan@example.com", name: "Jordan Hale" }]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
