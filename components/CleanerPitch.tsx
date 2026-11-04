@@ -1,8 +1,9 @@
+import { EXAMPLE_LARGER_CLEAN } from "@/lib/cleaner-sample";
 import { cad } from "@/lib/format";
-import { CLEANER_SHARE_GROWTH_PERCENT, CLEANER_SHARE_PERCENT, landingPreviewShare } from "@/lib/pricing";
+import { CLEANER_SHARE_GROWTH_PERCENT, CLEANER_SHARE_PERCENT } from "@/lib/pricing";
 import { SectionIntro } from "./ui";
 
-const previewShare = landingPreviewShare();
+const sample = EXAMPLE_LARGER_CLEAN;
 
 const REASONS = [
   {
@@ -34,9 +35,12 @@ export function CleanerPitch() {
           </svg>
           <div className="earn-grid">
             <div className="earn-figure">
-              <p>Your share of a {cad(previewShare.visitBeforeHst)} clean</p>
-              <p className="earn-amount">{cad(previewShare.share, true)}</p>
-              <p>2-bedroom bi-weekly in Liberty Village · about 3.5 hours · plus 100% of tips</p>
+              <p>Your share of a {cad(sample.beforeHst)} clean</p>
+              <p className="earn-amount">{cad(sample.dayOne, true)}</p>
+              <p>
+                Example larger clean · {sample.homeLine} · {sample.rhythm} · {cad(sample.beforeHst)} before
+                HST · plus 100% of tips
+              </p>
             </div>
             <div className="earn-copy">
               <p className="eyebrow on-dark">Clean with Tydlii</p>
@@ -53,7 +57,9 @@ export function CleanerPitch() {
                 </div>
                 <div className="share-labels">
                   <span>{CLEANER_SHARE_PERCENT}% yours from day one</span>
-                  <span>up to {CLEANER_SHARE_GROWTH_PERCENT}%</span>
+                  <span>
+                    up to {CLEANER_SHARE_GROWTH_PERCENT}% · {cad(sample.grown, true)}
+                  </span>
                 </div>
               </div>
             </div>

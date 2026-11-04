@@ -32,7 +32,9 @@ Delete account, from Account or Settings, opens [https://tydlii.com/privacy#dele
 
 The smile wordmark is copied from `public/brand/wordmark.png` (ink) and `public/brand/wordmark-light.png` (on ink). The app icon is `public/brand/app-icon.png`. Replace those files in each app's `assets/` if the master artwork changes.
 
-Quote options and prices come from `packages/quote` (`@tydlii/quote`), the same package the website uses. A Liberty Village 2-bedroom, 800–999 sq ft, bi-weekly, maintained, is **$229 + HST** per plan visit ($258.77 with HST). The first visit is **$279 + HST**. The cleaner sample offer pays **67%** of the $229 plan price, **$153.43**.
+Quote options and prices come from `packages/quote` (`@tydlii/quote`), the same package the website uses. A Liberty Village 2-bedroom, 800–999 sq ft, bi-weekly, maintained, is **$229 + HST** per plan visit ($258.77 with HST). The first visit is **$279 + HST**. That remains the customer preview and the quote-calculator default.
+
+The cleaner sample is a different home, labeled **example larger clean**. It is band F from the quote table: **1,600–1,999 sq ft** (base 299), **2 bedrooms** (+20), **2 full baths** (+30), bi-weekly, maintained. The plan price is **$349 before HST**. The offer pays **67%**, **$233.83**, and also shows the **72%** path, **$251.28**. The map pin is still 88 Niagara Street so the sample route is unchanged. It is not the $229 condo.
 
 ## Customer
 
@@ -49,7 +51,7 @@ Entry screen, then:
 
 ## Cleaner
 
-Entry screen with **Go online**. While online, one sample offer shows the area, home, time, and dollar share before accept or decline.
+Entry screen with **Go online**. While online, one sample offer shows the example larger clean: area, home, time, and the 67% dollar share (with the 72% path) before accept or decline.
 
 1. **Navigate** — the same live visit map. The pin moves toward the home. Chips follow En route → Arrived → Cleaning → Done. "I've arrived" still works if you mark it early.
 2. **On the visit** — the map stays up. Start and Done still work by hand.

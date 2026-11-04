@@ -86,18 +86,21 @@ function CleanerHome() {
 
         {showOffer ? (
           <Card>
-            <Text style={styles.kicker}>Sample offer</Text>
+            <Text style={styles.kicker}>{SAMPLE_OFFER.example}</Text>
             <Text style={styles.offerArea}>{SAMPLE_OFFER.area}</Text>
             <Text style={styles.body}>
-              {SAMPLE_OFFER.address}, {SAMPLE_OFFER.unit}
+              {SAMPLE_OFFER.place}
               {"\n"}
               {SAMPLE_OFFER.home}
               {"\n"}
-              {SAMPLE_OFFER.when} · {SAMPLE_OFFER.hours}
+              {SAMPLE_OFFER.rhythm}
+              {"\n"}
+              {SAMPLE_OFFER.when}
             </Text>
             <Text style={styles.earn}>{cad(SAMPLE_OFFER.earn, true)}</Text>
             <Text style={styles.body}>
-              {SAMPLE_OFFER.share} of a {cad(SAMPLE_OFFER.price)} visit. Tips would be yours.
+              {SAMPLE_OFFER.share} of a {cad(SAMPLE_OFFER.price)} visit before HST. At {SAMPLE_OFFER.shareGrown},{" "}
+              {cad(SAMPLE_OFFER.earnAt72, true)}. Tips would be yours.
             </Text>
             <View style={styles.offerActions}>
               <Button

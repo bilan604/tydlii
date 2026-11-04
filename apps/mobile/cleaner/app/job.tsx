@@ -57,9 +57,10 @@ export default function JobScreen() {
                     : "Visit complete"}
             </Text>
             <Text style={styles.body}>
-              {SAMPLE_OFFER.address}, {SAMPLE_OFFER.unit} · {SAMPLE_OFFER.area}
+              {SAMPLE_OFFER.place} · {SAMPLE_OFFER.area}
               {"\n"}
-              You earn {cad(SAMPLE_OFFER.earn, true)} for this sample.
+              {SAMPLE_OFFER.example}. You earn {cad(SAMPLE_OFFER.earn, true)} ({SAMPLE_OFFER.share} of{" "}
+              {cad(SAMPLE_OFFER.price)} before HST).
             </Text>
             {phase === "arrived" ? (
               <Button

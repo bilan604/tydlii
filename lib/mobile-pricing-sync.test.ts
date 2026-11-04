@@ -39,6 +39,8 @@ test("mobile quote math matches the website, including the Liberty Village sampl
   assert.equal(liberty.plan.withHst, 258.77);
   assert.equal(liberty.first.beforeHst, 279);
   assert.equal(cleanerShareAmount(liberty.plan.beforeHst), 153.43);
-  assert.equal(SAMPLE_OFFER.price, 229);
-  assert.equal(SAMPLE_OFFER.earn, 153.43);
+  assert.equal(SAMPLE_OFFER.price, 349);
+  assert.equal(SAMPLE_OFFER.earn, 233.83);
+  assert.equal(SAMPLE_OFFER.earnAt72, 251.28);
+  assert.notEqual(SAMPLE_OFFER.price, liberty.plan.beforeHst);
 });
