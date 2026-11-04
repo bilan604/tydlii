@@ -29,29 +29,38 @@ Entry screen, then:
 1. **Book** — street address, launch neighbourhood (CityPlace, King West, Liberty Village), sq ft band, beds and baths, frequency, condition, and the flat price.
 2. **Schedule** — a day and an arrival window.
 3. **Pay** — a checkout stub. No card number. Nothing is charged.
-4. **Live visit** — a drawn map and a status control: En route, Cleaning, Done.
+4. **Live visit** — home pin, cleaner pin, and route. The cleaner pin moves on a simulated GPS trace. Status chips: En route, Arrived, Cleaning, Done. ETA counts down, then the trace stops at Done.
 
-"Preview a sample visit" opens the map without a booking. The sample uses the $229 site preview, not a dispatched cleaner.
+"Preview a sample visit" opens the map without a booking. The sample uses the $229 site preview, not a dispatched cleaner. The customer's phone is not tracked.
 
 ## Cleaner
 
 Entry screen with **Go online**. While online, one sample offer shows the area, home, time, and dollar share before accept or decline.
 
-1. **Navigate** — a drawn route and sample steps. It does not open a maps app.
-2. **On the visit** — Arrived, Start, Done.
+1. **Navigate** — the same live visit map. The pin moves toward the home. Chips follow En route → Arrived → Cleaning → Done. "I've arrived" still works if you mark it early.
+2. **On the visit** — the map stays up. Start and Done still work by hand.
 3. **Earnings** — a ledger that updates when the sample visit is marked done. Nothing is paid out.
 
 Replay of the sample offer does not add a second payout.
 
+## Live visit package
+
+`apps/mobile/shared` (`@tydlii/live`) is the status machine, simulated GPS stream, device-GPS interface, and map layout used by both apps. The apps are still two Expo projects. This folder is not an npm workspace and is not part of the website install.
+
+The preview plays a simulated trace so Expo web and CI need no paid key. `DeviceGpsStream` is the plug for `expo-location` later: request when-in-use, watch only while the job is active, `stop()` on Done. If permission is denied, the status chips still advance and the customer still sees them.
+
+`EXPO_PUBLIC_MAPS_API_KEY` is reserved for a native map later. Leave it empty. This preview draws the route from coordinates and does not call Google, MapKit, or another tile host.
+
+The cleaner app's `app.json` sets the iOS when-in-use purpose string and the Android fine/coarse permissions. Background location is blocked. The customer app does not ask for location.
+
 ## Not in this version
 
 - Chat
-- Background location, or any GPS while a job is closed
+- Background location, or GPS while a job is Done
 - Stripe, card entry, or another payment provider
-- Google Maps, MapKit, or any maps API key
+- A maps SDK or a live maps key
 - Accounts, push, or a shared backend
-
-Location copy in the apps describes the preview. Neither app asks for location permission.
+- Store submit (`eas submit` is not configured)
 
 ## Run on Expo Go or a simulator
 

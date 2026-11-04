@@ -1,19 +1,39 @@
 import { router, Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
-import { MapStub } from "@/components/MapStub";
+import { LiveVisitMap } from "@/components/LiveVisitMap";
 import { Button, Card, Chip, Screen } from "@/components/ui";
-import { useBooking, type JobStatus } from "@/lib/booking";
+import { useBooking } from "@/lib/booking";
 import { cad } from "@/lib/format";
+import { useLiveVisit } from "@/lib/use-live-visit";
+import { JOB_STATUSES, JOB_STATUS_LABELS, type JobStatus } from "../../shared/src";
 import { colors } from "@/theme";
 
-const STATUSES: { id: JobStatus; label: string }[] = [
-  { id: "enroute", label: "En route" },
-  { id: "cleaning", label: "Cleaning" },
-  { id: "done", label: "Done" },
-];
+function headline(status: JobStatus): string {
+  if (status === "enroute") return "On the way";
+  if (status === "arrived") return "Arrived";
+  if (status === "cleaning") return "Cleaning now";
+  return "Done";
+}
+
+function detail(status: JobStatus, when: string, sample: boolean): string {
+  if (status === "enroute") return sample ? "Simulated GPS · window 9:00–10:00" : `In the window you booked · ${when}`;
+  if (status === "arrived") return "Your Tydlii-certified cleaner is at the home.";
+  if (status === "cleaning") return "Your Tydlii-certified cleaner is in the home.";
+  return "The visit is finished. The price stayed locked.";
+}
+
+function etaCopy(status: JobStatus, minutes: number | null): string {
+  if (status === "done") return "Visit finished";
+  if (status === "cleaning") return "At the home";
+  if (status === "arrived" || minutes === 0) return "Arriving now";
+  if (minutes == null) return "ETA";
+  return `ETA ${minutes} min`;
+}
 
 export default function JobScreen() {
-  const { visit, status, setStatus, previewSample } = useBooking();
+  const { visit, previewSample } = useBooking();
+  const { snapshot, setStatus, home, route } = useLiveVisit(Boolean(visit));
+  const status = snapshot?.status ?? "enroute";
 
   return (
     <>
@@ -23,38 +43,34 @@ export default function JobScreen() {
           <View style={styles.stack}>
             {visit.sample ? (
               <Text style={styles.banner}>
-                Sample visit, using the {cad(visit.beforeHst)} locked price from the site preview. No cleaner
-                is dispatched.
+                Sample visit, using the {cad(visit.beforeHst)} locked price from the site preview. Simulated GPS
+                on this phone. No cleaner is dispatched.
               </Text>
             ) : null}
-            <MapStub phase={status} />
-            <Text style={styles.note}>This preview does not use your location.</Text>
+            <LiveVisitMap
+              home={home}
+              cleaner={snapshot?.fix ?? route[0]}
+              route={route}
+              label={`Live visit map. Cleaner is ${JOB_STATUS_LABELS[status]}. ${etaCopy(status, snapshot?.etaMinutes ?? null)}.`}
+            />
+            <Text style={styles.eta}>{etaCopy(status, snapshot?.etaMinutes ?? null)}</Text>
+            <Text style={styles.note}>
+              This preview simulates the cleaner’s GPS. A store build tracks the cleaner only during an active
+              job and stops at Done. Your phone’s location is not used.
+            </Text>
 
             <View style={styles.segments}>
-              {STATUSES.map((item) => (
-                <View key={item.id} style={styles.segment}>
-                  <Chip
-                    fill
-                    label={item.label}
-                    selected={status === item.id}
-                    onPress={() => setStatus(item.id)}
-                  />
+              {JOB_STATUSES.map((id) => (
+                <View key={id} style={styles.segment}>
+                  <Chip fill label={JOB_STATUS_LABELS[id]} selected={status === id} onPress={() => setStatus(id)} />
                 </View>
               ))}
             </View>
 
             <Text accessibilityRole="header" style={styles.title}>
-              {status === "enroute" ? "On the way" : status === "cleaning" ? "Cleaning now" : "Done"}
+              {headline(status)}
             </Text>
-            <Text style={styles.body}>
-              {status === "enroute"
-                ? visit.sample
-                  ? "Arriving 9:12 · window 9:00–10:00"
-                  : `In the window you booked · ${visit.when}`
-                : status === "cleaning"
-                  ? "Your Tydlii-certified cleaner is in the home."
-                  : "The visit is finished. The price stayed locked."}
-            </Text>
+            <Text style={styles.body}>{detail(status, visit.when, visit.sample)}</Text>
 
             <Card>
               <View style={styles.cleaner}>
@@ -100,8 +116,9 @@ export default function JobScreen() {
 const styles = StyleSheet.create({
   stack: { gap: 14 },
   banner: { color: colors.ink, fontSize: 14, lineHeight: 20 },
-  note: { color: colors.ink, fontSize: 13 },
-  segments: { flexDirection: "row", gap: 8 },
+  eta: { color: colors.ink, fontSize: 22, fontWeight: "600", letterSpacing: -0.4 },
+  note: { color: colors.ink, fontSize: 13, lineHeight: 18 },
+  segments: { flexDirection: "row", gap: 6 },
   segment: { flex: 1 },
   title: { color: colors.ink, fontSize: 32, fontWeight: "600", letterSpacing: -0.8 },
   body: { color: colors.ink, fontSize: 15, lineHeight: 21 },

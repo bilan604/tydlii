@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { BrandMark } from "@/components/BrandMark";
 import { Button, Card, Screen } from "@/components/ui";
 import { cad } from "@/lib/format";
@@ -110,9 +110,17 @@ export default function HomeScreen() {
         <View style={styles.actions}>
           <Button kind="quiet" tone="ink" label="Earnings" onPress={() => router.push("/earnings")} />
           <Text style={styles.fine}>
-            Sample data only. This build does not read location, including in the background, and it does not
-            send a payout.
+            Sample data only. This preview simulates GPS. A store build asks for location only during an active
+            job, then stops. Nothing is paid out.
           </Text>
+          <View style={styles.legalRow}>
+            <Pressable accessibilityRole="link" onPress={() => router.push("/privacy")}>
+              <Text style={styles.legal}>Privacy</Text>
+            </Pressable>
+            <Pressable accessibilityRole="link" onPress={() => router.push("/terms")}>
+              <Text style={styles.legal}>Terms</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Screen>
@@ -173,4 +181,6 @@ const styles = StyleSheet.create({
   block: { gap: 12 },
   actions: { gap: 10, marginTop: "auto" },
   fine: { color: colors.mist, fontSize: 13, lineHeight: 18, textAlign: "center" },
+  legalRow: { flexDirection: "row", justifyContent: "center", gap: 20 },
+  legal: { color: colors.mist, fontSize: 14, fontWeight: "600", textDecorationLine: "underline" },
 });
