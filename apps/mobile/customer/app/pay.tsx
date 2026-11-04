@@ -5,6 +5,7 @@ import { TestPaymentSheet } from "@/components/TestPaymentSheet";
 import { Button, Card, Screen } from "@/components/ui";
 import { useBooking } from "@/lib/booking";
 import { upcomingDays, windowLabel } from "@/lib/draft";
+import { firstVisitSentence } from "@tydlii/quote";
 import { cad } from "@/lib/format";
 import { presentQuote } from "@/lib/present";
 import { colors } from "@/theme";
@@ -80,10 +81,9 @@ export default function PayScreen() {
             <Row label="With 13% HST" value={cad(presented.quote.first.withHst, true)} />
           </View>
 
-          {presented.quote.plan ? (
+          {presented.firstVisit ? (
             <Text style={styles.body}>
-              From visit two, the {presented.quote.frequencyLabel.toLowerCase()} price is{" "}
-              {cad(presented.quote.plan.beforeHst)} + HST.
+              {firstVisitSentence(presented.firstVisit.kind, cad(presented.firstVisit.beforeHst))}
             </Text>
           ) : null}
 

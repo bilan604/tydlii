@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AREAS, type AreaName } from "@/lib/areas";
 import { CLEANER_ONBOARDING_FORM_URL } from "@/lib/cleaner-onboarding";
 import { cad } from "@/lib/format";
-import type { Frequency } from "@/lib/pricing";
+import { FREQUENCIES } from "@/lib/pricing";
 import {
   REFERRAL_CREDIT_PROMISE,
   REFERRAL_FRIEND_OFFER,
@@ -23,13 +23,6 @@ import { Check } from "./ui";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const FREQ_SHORT: Record<Frequency, string> = {
-  weekly: "weekly",
-  biweekly: "bi-weekly",
-  every4: "every 4 weeks",
-  onetime: "one-time",
-};
-
 const EXPERIENCE = ["None yet", "Under 1 year", "1–2 years", "3–5 years", "5+ years"] as const;
 const RIDES = ["Yes, I have a vehicle", "No vehicle", "Transit is fine"] as const;
 
@@ -40,7 +33,8 @@ function quoteLine(snapshot: QuoteSnapshot): string {
   const price = snapshot.quote.custom
     ? "custom quote"
     : `${cad((snapshot.quote.plan ?? snapshot.quote.first).beforeHst)} + HST`;
-  return `${snapshot.bedrooms} bed, ${snapshot.fullBaths} bath${half}, ${snapshot.quote.label.toLowerCase()}, ${FREQ_SHORT[snapshot.frequency]}, ${price}`;
+  const frequency = FREQUENCIES.find((item) => item.id === snapshot.frequency);
+  return `${snapshot.bedrooms} bed, ${snapshot.fullBaths} bath${half}, ${snapshot.quote.label.toLowerCase()}, ${frequency?.label.toLowerCase() ?? snapshot.frequency}, ${price}`;
 }
 
 function joinNotes(lines: string[], note: string): string {

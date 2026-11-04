@@ -6,9 +6,21 @@ import {
   SAMPLE_ADDRESSES,
   type Area,
 } from "@/lib/draft";
+import {
+  BEDROOM_OPTIONS,
+  CONDITIONS,
+  FREQUENCIES,
+  FULL_BATH_OPTIONS,
+  HALF_BATH_OPTIONS,
+  QUOTE_FIELDS,
+  SQFT_BANDS,
+  firstVisitSentence,
+  type BandId,
+  type Condition,
+  type Frequency,
+} from "@tydlii/quote";
 import { cad } from "@/lib/format";
 import { useBooking } from "@/lib/booking";
-import { CONDITIONS, FREQUENCIES, SQFT_BANDS, type BandId, type Condition, type Frequency } from "@/lib/pricing";
 import { presentQuote } from "@/lib/present";
 import { colors } from "@/theme";
 
@@ -32,16 +44,14 @@ export default function BookScreen() {
           </View>
         ) : (
           <View style={styles.footer}>
-            <Text style={styles.kicker}>
-              {presented.quote.firstKind === "reset" ? "This visit · reset clean" : "This visit"}
-            </Text>
+            <Text style={styles.kicker}>{presented.eyebrow}</Text>
             <Text style={styles.price}>
-              {cad(presented.quote.first.beforeHst)} <Text style={styles.tax}>+ HST</Text>
+              {cad(presented.headline.beforeHst)} <Text style={styles.tax}>+ HST</Text>
             </Text>
-            <Text style={styles.incl}>{cad(presented.quote.first.withHst, true)} with HST</Text>
-            {presented.quote.plan ? (
+            <Text style={styles.incl}>{cad(presented.headline.withHst, true)} including 13% HST</Text>
+            {presented.firstVisit ? (
               <Text style={styles.incl}>
-                {presented.quote.frequencyLabel} from visit two: {cad(presented.quote.plan.beforeHst)} + HST
+                {firstVisitSentence(presented.firstVisit.kind, cad(presented.firstVisit.beforeHst))}
               </Text>
             ) : null}
             {ready ? null : <Text style={styles.incl}>Enter a street address to continue.</Text>}
@@ -54,7 +64,9 @@ export default function BookScreen() {
         )
       }
     >
-      <Text style={styles.intro}>Locked before you book. The same bands as the Toronto price list.</Text>
+      <Text style={styles.intro}>
+        Locked before you book. Prices shown before HST; Ontario HST (13%) is added at checkout.
+      </Text>
       <Pressable accessibilityRole="link" onPress={() => router.push("/coverage")}>
         <Text style={styles.coverage}>Toronto is the soft launch. See where Canada opens next.</Text>
       </Pressable>
@@ -99,7 +111,7 @@ export default function BookScreen() {
         </View>
       </Block>
 
-      <Block title="Home size">
+      <Block title={QUOTE_FIELDS.band}>
         <ScrollView
           horizontal
           nestedScrollEnabled
@@ -118,29 +130,28 @@ export default function BookScreen() {
       </Block>
 
       <Stepper
-        label="Bedrooms"
-        hint="A den counts as one."
+        label={QUOTE_FIELDS.bedrooms}
         value={draft.bedrooms}
-        min={1}
-        max={5}
+        min={BEDROOM_OPTIONS[0]}
+        max={BEDROOM_OPTIONS[BEDROOM_OPTIONS.length - 1]}
         onChange={(bedrooms) => update({ bedrooms })}
       />
       <Stepper
-        label="Full bathrooms"
+        label={QUOTE_FIELDS.fullBaths}
         value={draft.fullBaths}
-        min={1}
-        max={4}
+        min={FULL_BATH_OPTIONS[0]}
+        max={FULL_BATH_OPTIONS[FULL_BATH_OPTIONS.length - 1]}
         onChange={(fullBaths) => update({ fullBaths })}
       />
       <Stepper
-        label="Half bathrooms"
+        label={QUOTE_FIELDS.halfBaths}
         value={draft.halfBaths}
-        min={0}
-        max={2}
+        min={HALF_BATH_OPTIONS[0]}
+        max={HALF_BATH_OPTIONS[HALF_BATH_OPTIONS.length - 1]}
         onChange={(halfBaths) => update({ halfBaths })}
       />
 
-      <Block title="How often">
+      <Block title={QUOTE_FIELDS.frequency}>
         <View style={styles.wrap}>
           {FREQUENCIES.map((item) => (
             <Chip
@@ -153,7 +164,7 @@ export default function BookScreen() {
         </View>
       </Block>
 
-      <Block title="Condition today">
+      <Block title={QUOTE_FIELDS.condition}>
         <View style={styles.wrap}>
           {CONDITIONS.map((item) => (
             <Chip

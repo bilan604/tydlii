@@ -1,4 +1,4 @@
-import type { BandId, Condition, Frequency } from "@/lib/pricing";
+import { DEFAULT_QUOTE_INPUT, type BandId, type Condition, type Frequency } from "@tydlii/quote";
 
 export const AREAS = ["CityPlace", "King West", "Liberty Village"] as const;
 export type Area = (typeof AREAS)[number];
@@ -29,12 +29,7 @@ export const DEFAULT_DRAFT: Draft = {
   address: "",
   unit: "",
   area: "Liberty Village",
-  band: "C",
-  bedrooms: 2,
-  fullBaths: 1,
-  halfBaths: 0,
-  frequency: "biweekly",
-  condition: "standard",
+  ...DEFAULT_QUOTE_INPUT,
   dayId: "",
   windowId: "morning",
 };

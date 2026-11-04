@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import * as cleaner from "../apps/mobile/cleaner/lib/pricing";
-import * as customer from "../apps/mobile/customer/lib/pricing";
-import { quoteHome, type QuoteInput } from "./pricing";
+import { SAMPLE_OFFER } from "../apps/mobile/cleaner/lib/sample-offer";
+import { presentQuote } from "../apps/mobile/customer/lib/present";
+import { cleanerShareAmount, quoteHome, quotePresentation, type QuoteInput } from "@tydlii/quote";
 
 const samples: QuoteInput[] = [
   { band: "A", bedrooms: 1, fullBaths: 1, halfBaths: 0, frequency: "weekly", condition: "standard" },
@@ -14,10 +14,16 @@ const samples: QuoteInput[] = [
 
 test("mobile quote math matches the website, including the Liberty Village sample", () => {
   for (const input of samples) {
-    assert.deepEqual(customer.quoteHome(input), quoteHome(input));
-    assert.deepEqual(cleaner.quoteHome(input), quoteHome(input));
+    const site = quoteHome(input);
+    const customer = presentQuote(input);
+    const landing = quotePresentation(input);
+    assert.deepEqual(customer, landing);
+    assert.equal(customer.custom, false);
+    assert.equal(landing.custom, false);
+    if (customer.custom || landing.custom || site.custom) continue;
+    assert.deepEqual(customer.quote, site);
+    assert.deepEqual(landing.quote, site);
   }
-  assert.deepEqual(customer.SQFT_BANDS, cleaner.SQFT_BANDS);
 
   const liberty = quoteHome({
     band: "C",
@@ -31,5 +37,8 @@ test("mobile quote math matches the website, including the Liberty Village sampl
   if (liberty.custom || !liberty.plan) return;
   assert.equal(liberty.plan.beforeHst, 229);
   assert.equal(liberty.plan.withHst, 258.77);
-  assert.equal(Math.round(liberty.plan.beforeHst * 67) / 100, 153.43);
+  assert.equal(liberty.first.beforeHst, 279);
+  assert.equal(cleanerShareAmount(liberty.plan.beforeHst), 153.43);
+  assert.equal(SAMPLE_OFFER.price, 229);
+  assert.equal(SAMPLE_OFFER.earn, 153.43);
 });
