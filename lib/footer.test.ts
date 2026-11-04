@@ -16,6 +16,8 @@ test("the site footer states the Tydlii guarantee, city, and founding year", () 
   assert.doesNotMatch(html, /Prices before HST/);
   assert.doesNotMatch(html, /Every clean, guaranteed/);
   assert.doesNotMatch(html, /guranteed/);
+  assert.match(html, /href="\/privacy"/);
+  assert.match(html, /href="\/terms"/);
 });
 
 test("the shared footer source does not keep the old HST line", async () => {
