@@ -1,6 +1,6 @@
 # Tydlii mobile
 
-Two Expo apps for a later App Store and Play Store release. They share the Tydlii colours and the smile wordmark. They do not talk to the website or Stripe. The live visit map is MapLibre drawing free OpenStreetMap tiles. Addresses, offers, and payments are still sample data.
+Two Expo apps for a later App Store and Play Store release. They share the Tydlii colours and the smile wordmark. The live visit map is MapLibre drawing free OpenStreetMap tiles. Addresses and offers are still sample data. Checkout is a test-mode PaymentSheet stand-in. It does not call Stripe, and a live publishable key is refused.
 
 | App | Path | Bundle id (placeholder) |
 | --- | --- | --- |
@@ -28,8 +28,10 @@ Entry screen, then:
 
 1. **Book** — street address, launch neighbourhood (CityPlace, King West, Liberty Village), sq ft band, beds and baths, frequency, condition, and the flat price.
 2. **Schedule** — a day and an arrival window.
-3. **Pay** — a checkout stub. No card number. Nothing is charged.
+3. **Pay** — a test-mode PaymentSheet. The placeholder key is `pk_test_tydlii_placeholder`. No card number is stored, nothing is charged, and a live key is refused.
 4. **Live visit** — a MapLibre map of the real streets and buildings. Teal cleaner pin, ink home pin, teal route. The cleaner pin moves on a simulated GPS trace. Status chips: En route, Arrived, Cleaning, Done. ETA counts down, then the trace stops at Done.
+
+**Settings** opens privacy, terms, delete account, and Canada coverage. Delete account returns "Not sent" until an account API exists. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
 
 "Preview a sample visit" opens the map without a booking. The sample uses the $229 site preview, not a dispatched cleaner. The customer's phone is not tracked.
 
@@ -55,13 +57,20 @@ The map is [MapLibre GL](https://maplibre.org/) drawing free [OpenStreetMap](htt
 
 The cleaner app's `app.json` sets the iOS when-in-use purpose string and the Android fine/coarse permissions. Background location is blocked. The customer app does not ask for location.
 
+## Store scaffolding
+
+`eas.json` in each app has `preview` (internal APK) and `production` (store app bundle) build profiles. There is no `submit` profile. Do not run `eas submit`.
+
+Copy `apps/mobile/.env.example` to `apps/mobile/customer/.env` only if you want to replace the placeholder `pk_test_` key. The map does not read it.
+
 ## Not in this version
 
 - Chat
 - Background location, or GPS while a job is Done
-- Stripe, card entry, or another payment provider
+- A live Stripe key, a real PaymentIntent, or a card vault
+- A drawn map, or a native maps SDK, in place of MapLibre
 - A paid maps key
-- Accounts, push, or a shared backend
+- A real account API, push, or a shared backend
 - Store submit (`eas submit` is not configured)
 
 ## Run on Expo Go or a simulator
@@ -97,6 +106,6 @@ Then:
 
 Do not submit a build from this scaffold.
 
-TestFlight and Play Console need a founder's OK first: legal name, bundle ids, icons, privacy labels, and any real payments or maps. These projects do not include an EAS submit profile. Uploading a binary is out of scope until that approval is explicit.
+TestFlight and Play Console need a founder's OK first: legal name, bundle ids, icons, privacy labels, and any real payments or maps. These projects include EAS preview and production build sketches and do not include a submit profile. Uploading a binary is out of scope until that approval is explicit. Do not run `eas submit`.
 
 Store builds, when they are approved, are two apps (`com.tydlii.customer` and `com.tydlii.cleaner`), not one listing with a hidden switch.
