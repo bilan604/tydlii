@@ -1,12 +1,69 @@
+import { RoleSwitch, useAuth } from "@tydlii/auth/react";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BrandMark } from "@/components/BrandMark";
 import { Button, Card, Screen } from "@/components/ui";
 import { cad } from "@/lib/format";
 import { useBooking } from "@/lib/booking";
+import { quoteHome } from "@/lib/pricing";
 import { colors } from "@/theme";
 
 export default function HomeScreen() {
+  const mode = useAuth().session?.signedInAs ?? "customer";
+  if (mode === "cleaner") return <CleanerMode />;
+  return <CustomerHome />;
+}
+
+function CleanerMode() {
+  const { previewSample } = useBooking();
+  const quote = quoteHome({
+    band: "C",
+    bedrooms: 2,
+    fullBaths: 1,
+    halfBaths: 0,
+    frequency: "biweekly",
+    condition: "standard",
+  });
+  const price = quote.custom || !quote.plan ? 0 : quote.plan.beforeHst;
+  const earn = Math.round(price * 67) / 100;
+
+  return (
+    <Screen tone="ink">
+      <View style={styles.stack}>
+        <View>
+          <BrandMark variant="light" width={176} />
+          <View style={styles.rule} />
+          <View style={styles.switchWrap}><RoleSwitch /></View>
+          <Text accessibilityRole="header" style={styles.title}>
+            Cleaner mode
+          </Text>
+          <Text style={styles.lede}>Same account. Offers in this app use the sample visit. Location stays off.</Text>
+        </View>
+        <Card>
+          <Text style={styles.cardKicker}>Sample offer</Text>
+          <Text style={styles.cardTitle}>Liberty Village</Text>
+          <Text style={styles.cardBody}>
+            2-bedroom · today, 9:00–11:00{"\n"}
+            {cad(earn, true)} is 67% of {cad(price)}
+          </Text>
+          <Button
+            label="Open the live visit"
+            onPress={() => {
+              previewSample();
+              router.push("/job");
+            }}
+          />
+        </Card>
+        <View style={styles.actions}>
+          <Button kind="quiet" tone="ink" label="Account" onPress={() => router.push("/account")} />
+          <Button kind="quiet" tone="ink" label="Settings" onPress={() => router.push("/settings")} />
+        </View>
+      </View>
+    </Screen>
+  );
+}
+
+function CustomerHome() {
   const { visit, previewSample } = useBooking();
 
   return (
@@ -15,9 +72,7 @@ export default function HomeScreen() {
         <View>
           <BrandMark variant="light" width={176} />
           <View style={styles.rule} />
-          <View style={styles.pill}>
-            <Text style={styles.pillText}>Customer</Text>
-          </View>
+          <View style={styles.switchWrap}><RoleSwitch /></View>
           <Text accessibilityRole="header" style={styles.title}>
             More living.{"\n"}Less cleaning.
           </Text>
@@ -45,6 +100,7 @@ export default function HomeScreen() {
 
         <View style={styles.actions}>
           <Button tone="ink" label="Book a clean" onPress={() => router.push("/book")} />
+          <Button kind="quiet" tone="ink" label="Account" onPress={() => router.push("/account")} />
           <Button kind="quiet" tone="ink" label="Settings" onPress={() => router.push("/settings")} />
           {visit ? null : (
             <Button
@@ -79,6 +135,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   stack: { flexGrow: 1, justifyContent: "space-between", gap: 28, paddingBottom: 8 },
+  switchWrap: { marginTop: 22 },
   rule: {
     width: 48,
     height: 4,

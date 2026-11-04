@@ -1,0 +1,23 @@
+{
+  "name": "@tydlii/auth",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local sign-in sketch shared by the Tydlii customer and cleaner apps. No server.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.ts"
+  },
+  "peerDependencies": {
+    "expo-auth-session": "*",
+    "expo-crypto": "*",
+    "expo-router": "*",
+    "expo-secure-store": "*",
+    "expo-status-bar": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-safe-area-context": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

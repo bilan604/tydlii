@@ -6,7 +6,7 @@ The promise on the site is a **Tydlii-certified cleaner in the booked window**, 
 
 ## Native apps
 
-Customer and cleaner apps live in [`apps/mobile`](apps/mobile/README.md). They stay two apps and are not part of the root npm install. The live visit map is MapLibre with free OpenStreetMap tiles. Store scaffolding adds privacy and terms, an account-deletion stub, a Stripe test-mode PaymentSheet that refuses a `pk_live_` key, a Canada coverage model (Toronto soft launch, every province and territory listed), and `eas.json` preview/production profiles. There is no submit profile. Do not run `eas submit`.
+Customer and cleaner apps live in [`apps/mobile`](apps/mobile/README.md). They stay two installs and are not part of the root npm install. Sign-in is local. Each app can switch that account between customer and cleaner. Delete account links to [tydlii.com/privacy#delete-account](https://tydlii.com/privacy#delete-account) and does not call an API. The live visit map is MapLibre with free OpenStreetMap tiles. Store scaffolding adds privacy and terms, a Stripe test-mode PaymentSheet that refuses a `pk_live_` key, a Canada coverage model (Toronto soft launch, every province and territory listed), and `eas.json` preview/production profiles. There is no submit profile. Do not run `eas submit`.
 
 ## Local
 

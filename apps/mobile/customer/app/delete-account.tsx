@@ -1,31 +1,37 @@
+import { DELETE_ACCOUNT_URL } from "@tydlii/auth";
+import { useAuth } from "@tydlii/auth/react";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { requestAccountDeletion } from "../../shared/src";
 import { Button, Card, Screen } from "@/components/ui";
 import { colors } from "@/theme";
 
 export default function DeleteAccountScreen() {
+  const auth = useAuth();
   const [message, setMessage] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const role = auth.session?.signedInAs ?? "customer";
 
   return (
     <Screen title="Delete account">
       <View style={styles.stack}>
         <Text style={styles.body}>
-          App Store review asks for a way to delete an account once sign-in exists. This screen will call the Tydlii
-          account API later. It does not send anything now.
+          This removes the account on this device and signs you out. It does not call Tydlii. The live deletion
+          section is on tydlii.com/privacy.
         </Text>
         <Card>
-          <Text style={styles.title}>Customer profile</Text>
-          <Text style={styles.body}>Deleting the profile would sign this device out and remove the saved booking.</Text>
+          <Text style={styles.title}>{role === "cleaner" ? "Cleaner profile" : "Customer profile"}</Text>
+          <Text style={styles.body}>Deleting the profile would sign this device out and remove the saved visit.</Text>
         </Card>
+        <Button label="Open tydlii.com/privacy#delete-account" onPress={() => void Linking.openURL(DELETE_ACCOUNT_URL)} />
         {message ? <Text style={styles.message}>{message}</Text> : null}
         {confirming ? (
           <Button
             label="Confirm delete"
             onPress={() => {
-              const result = requestAccountDeletion({ role: "customer", confirmed: true });
+              const result = requestAccountDeletion({ role, confirmed: true });
               setMessage(result.message);
+              void auth.deleteAccount();
               setConfirming(false);
             }}
           />

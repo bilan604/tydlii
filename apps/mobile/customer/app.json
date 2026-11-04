@@ -34,6 +34,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#070707"
         }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
       ]
     ],
     "experiments": {

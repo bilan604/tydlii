@@ -6,8 +6,44 @@
       "@/*": [
         "./*"
       ],
+      "@tydlii/auth": [
+        "../auth/src/index.ts"
+      ],
+      "@tydlii/auth/react": [
+        "../auth/src/react/index.ts"
+      ],
       "@tydlii/quote": [
         "../../../packages/quote/src/index.ts"
+      ],
+      "expo-auth-session": [
+        "./node_modules/expo-auth-session"
+      ],
+      "expo-crypto": [
+        "./node_modules/expo-crypto"
+      ],
+      "expo-router": [
+        "./node_modules/expo-router"
+      ],
+      "expo-secure-store": [
+        "./node_modules/expo-secure-store"
+      ],
+      "expo-status-bar": [
+        "./node_modules/expo-status-bar"
+      ],
+      "react": [
+        "./node_modules/@types/react/index.d.ts"
+      ],
+      "react/jsx-runtime": [
+        "./node_modules/@types/react/jsx-runtime.d.ts"
+      ],
+      "react/jsx-dev-runtime": [
+        "./node_modules/@types/react/jsx-dev-runtime.d.ts"
+      ],
+      "react-native": [
+        "./node_modules/react-native"
+      ],
+      "react-native-safe-area-context": [
+        "./node_modules/react-native-safe-area-context"
       ]
     }
   },

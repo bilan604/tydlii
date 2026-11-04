@@ -1,3 +1,4 @@
+import { RoleSwitch, useAuth } from "@tydlii/auth/react";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { BrandMark } from "@/components/BrandMark";
@@ -8,6 +9,34 @@ import { useSession } from "@/lib/session";
 import { colors } from "@/theme";
 
 export default function HomeScreen() {
+  const mode = useAuth().session?.signedInAs ?? "cleaner";
+  if (mode === "customer") return <CustomerMode />;
+  return <CleanerHome />;
+}
+
+function CustomerMode() {
+  return (
+    <Screen tone="ink">
+      <View style={styles.stack}>
+        <View>
+          <BrandMark variant="light" width={176} />
+          <View style={styles.rule} />
+          <View style={styles.switchWrap}><RoleSwitch /></View>
+          <Text accessibilityRole="header" style={styles.title}>
+            Customer mode
+          </Text>
+          <Text style={styles.lede}>
+            Same account. Switch back to Cleaner for offers. This screen does not ask for location.
+          </Text>
+        </View>
+        <Button kind="quiet" tone="ink" label="Account" onPress={() => router.push("/account")} />
+        <Button kind="quiet" tone="ink" label="Settings" onPress={() => router.push("/settings")} />
+      </View>
+    </Screen>
+  );
+}
+
+function CleanerHome() {
   const session = useSession();
   const { online, phase, declined, busy, setOnline, accept, decline } = session;
   const showOffer = online && phase === "offer";
@@ -18,9 +47,7 @@ export default function HomeScreen() {
         <View>
           <BrandMark variant="light" width={showOffer ? 140 : 176} />
           <View style={styles.rule} />
-          <View style={styles.pill}>
-            <Text style={styles.pillText}>Cleaner</Text>
-          </View>
+          <View style={styles.switchWrap}><RoleSwitch /></View>
           {showOffer ? (
             <Text accessibilityRole="header" style={styles.compactTitle}>
               You're online
@@ -109,6 +136,7 @@ export default function HomeScreen() {
 
         <View style={styles.actions}>
           <Button kind="quiet" tone="ink" label="Earnings" onPress={() => router.push("/earnings")} />
+          <Button kind="quiet" tone="ink" label="Account" onPress={() => router.push("/account")} />
           <Button kind="quiet" tone="ink" label="Settings" onPress={() => router.push("/settings")} />
           <Text style={styles.fine}>
             Sample data only. This preview simulates GPS. A store build asks for location only during an active
@@ -133,6 +161,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   stack: { flexGrow: 1, gap: 22, paddingBottom: 8 },
+  switchWrap: { marginTop: 22 },
   rule: {
     width: 48,
     height: 4,

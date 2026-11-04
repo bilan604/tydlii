@@ -9,9 +9,17 @@ Two Expo apps for a later App Store and Play Store release. They share the Tydli
 
 The marketing site stays at the repo root. Do not add these apps to the root npm workspaces. `npm ci` and `npm run build` there are still the Next.js site only. Root `npm test` also runs the shared live-visit, map-policy, coverage, payment, account, and store-sketch tests.
 
-## Same person, two apps
+## Same person, two installs, one account
 
-Keep both apps. A customer and a cleaner stay separate listings. The same person can install both later. A later single binary could import `@tydlii/live` and choose a role after an account exists. That switch is not in this version.
+Keep both listings. Sign-in is a local sketch in `@tydlii/auth` (`apps/mobile/auth`). Email and password, or an email code shown on the device. Nothing is emailed and nothing is sent to a server.
+
+After sign-in, **Customer** and **Cleaner** sit on the home screen. Switching changes that install's mode and adds the role to the same email. The customer install's cleaner mode opens the sample live visit. The cleaner install's customer mode switches the home and does not ask for location. Each install has its own SecureStore (localStorage in the web preview), so the account is not shared across the two apps until a server exists.
+
+Session keys: `tydlii.auth.vault.v1` and `tydlii.auth.session.v1.customer` or `.cleaner`. Phone builds use SecureStore with `WHEN_UNLOCKED_THIS_DEVICE_ONLY`. The web preview uses localStorage. Passwords are salted SHA-256 on the device. That is not a production password store.
+
+Hosted sign-in stays off unless both `EXPO_PUBLIC_AUTH_ISSUER` and `EXPO_PUBLIC_AUTH_CLIENT_ID` are set. See `apps/mobile/auth/.env.example`. CI leaves them empty. A provider response is not exchanged and does not create a session.
+
+Delete account, from Account or Settings, opens [https://tydlii.com/privacy#delete-account](https://tydlii.com/privacy#delete-account) and clears the local copy. The result says **Not sent**. Auth does not ask for location or Face ID. The cleaner app's when-in-use location strings are only for an active job, unchanged by sign-in.
 
 ## Brand
 
@@ -87,8 +95,8 @@ Both EAS profiles on the customer app set the placeholder. Leave them on `pk_tes
 - A live Stripe charge, a PaymentIntent, or a secret key in the app
 - A drawn map, or a native maps SDK, in place of MapLibre
 - A paid maps key
-- A real account API, push, or a shared backend
-- One binary with a customer/cleaner switch
+- A real account API, push, or a shared backend. Sign-in and the role switch are local.
+- One store listing. The two bundle ids stay. The role switch is inside each install.
 - Store submit (`eas submit` is not configured, and `eas.json` has no submit profile)
 
 ## Run on Expo Go or a simulator
