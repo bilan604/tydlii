@@ -160,7 +160,15 @@ test("customer presentation, landing presentation, and checkout price agree for 
               const landing = quotePresentation(input);
               const customer = presentQuote(input);
               const siteQuote = site.quoteHome(input);
-              assert.deepEqual(customer, landing, `${band.label} ${frequency.label} ${condition.label}`);
+              assert.equal(customer.custom, landing.custom, `${band.label} ${frequency.label} ${condition.label}`);
+              if (!customer.custom && !landing.custom) {
+                assert.deepEqual(customer.quote, landing.quote);
+                assert.equal(customer.eyebrow, landing.eyebrow);
+                assert.deepEqual(customer.firstVisit, landing.firstVisit);
+                assert.deepEqual(customer.headline, landing.headline);
+                assert.equal(customer.first.lines.length, 0);
+                assert.equal(customer.first.beforeHst, landing.quote.first.beforeHst);
+              }
               assert.deepEqual(landing.custom ? null : landing.quote, siteQuote.custom ? null : siteQuote);
               assert.equal(landing.custom, false);
               if (landing.custom || siteQuote.custom) continue;

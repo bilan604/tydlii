@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SQFT_BANDS, fromPrice, quoteHome, to9, withHst, type QuoteInput } from "./pricing";
+import { summarizeQuote } from "./quote-summary";
+import {
+  ADD_ONS,
+  SQFT_BANDS,
+  addOnLineLabel,
+  addOnLines,
+  fromPrice,
+  quoteHome,
+  stackOnLockedBase,
+  to9,
+  withHst,
+  type QuoteInput,
+} from "./pricing";
 
 const base: QuoteInput = {
   band: "A",
@@ -190,4 +202,129 @@ test("every selectable band produces a non-empty plan and first-visit price", ()
 
 test("homepage from-price is the weekly band A visit", () => {
   assert.deepEqual(fromPrice(), { beforeHst: 149, withHst: 168.37 });
+});
+
+test("add-on menu lists the founder prices and inclusions, before HST", () => {
+  assert.deepEqual(
+    ADD_ONS.map((item) => [item.label, item.menuPrice, item.unitPrice, item.inclusion]),
+    [
+      ["Inside fridge", "$29", 29, "Empty perishables aside; shelves and drawers wiped."],
+      ["Inside oven", "$29", 29, "Racks and cavity. Not a self-clean cycle."],
+      ["Inside cabinets", "$39", 39, "Kitchen and bath cabinets this visit. Not whole-home closets."],
+      ["Interior windows & tracks", "from $39", 39, "Interior glass and tracks this visit."],
+      ["Blinds", "$8/window", 8, "Per window, this visit."],
+      [
+        "Pets in home",
+        "$29",
+        29,
+        "Pet-home surcharge for extra hair and dander. Not a specialty odor treatment.",
+      ],
+      ["Laundry fold (1 load)", "$25", 25, "One load, folded."],
+      ["Dishes", "$20", 20, "Washed this visit."],
+      ["Change bed linens", "$15/bed", 15, "Per bed, this visit."],
+    ],
+  );
+});
+
+test("add-ons stack on the locked base and are not re-rounded or multiplied", () => {
+  const none = stackOnLockedBase(229);
+  assert.equal(none.beforeHst, 229);
+  assert.equal(none.withHst, 258.77);
+  assert.deepEqual(none.lines, []);
+
+  const liberty = quoteHome({
+    band: "C",
+    bedrooms: 2,
+    fullBaths: 1,
+    halfBaths: 0,
+    frequency: "biweekly",
+    condition: "standard",
+  });
+  assert.equal(liberty.custom, false);
+  if (liberty.custom || !liberty.plan) return;
+  assert.equal(liberty.plan.beforeHst, 229);
+
+  const stacked = stackOnLockedBase(liberty.plan.beforeHst, {
+    fridge: 1,
+    oven: 1,
+    windows: 1,
+    blinds: 2,
+    pets: 4,
+    laundry: 1,
+    linens: 2,
+  });
+  assert.equal(stacked.baseBeforeHst, 229);
+  assert.equal(liberty.plan.beforeHst, 229);
+  assert.deepEqual(
+    stacked.lines.map((line) => [addOnLineLabel(line), line.amount]),
+    [
+      ["Inside fridge", 29],
+      ["Inside oven", 29],
+      ["Interior windows & tracks", 39],
+      ["Blinds · 2 windows", 16],
+      ["Pets in home", 29],
+      ["Laundry fold (1 load)", 25],
+      ["Change bed linens · 2 beds", 30],
+    ],
+  );
+  assert.equal(stacked.addOnsBeforeHst, 197);
+  assert.equal(stacked.beforeHst, 426);
+  assert.notEqual(stacked.beforeHst, to9(stacked.beforeHst));
+  assert.equal(stacked.withHst, withHst(426));
+
+  const weekly = quoteHome({ ...base, frequency: "weekly" });
+  assert.equal(weekly.custom, false);
+  if (weekly.custom || !weekly.plan) return;
+  const blindsOnWeekly = stackOnLockedBase(weekly.plan.beforeHst, { blinds: 2 });
+  assert.equal(weekly.plan.beforeHst, 149);
+  assert.equal(blindsOnWeekly.beforeHst, 165);
+
+  const livedIn = quoteHome({
+    band: "C",
+    bedrooms: 2,
+    fullBaths: 1,
+    halfBaths: 0,
+    frequency: "biweekly",
+    condition: "livedin",
+  });
+  assert.equal(livedIn.custom, false);
+  if (livedIn.custom || !livedIn.plan) return;
+  const pets = stackOnLockedBase(livedIn.plan.beforeHst, { pets: 1 });
+  assert.equal(pets.beforeHst - livedIn.plan.beforeHst, 29);
+
+  const first = stackOnLockedBase(liberty.first.beforeHst, { fridge: 1 });
+  assert.equal(liberty.first.beforeHst, 279);
+  assert.equal(first.beforeHst, 308);
+  assert.equal(first.withHst, withHst(308));
+});
+
+test("add-on quantities clamp, and a stored quote summary keeps the locked base", () => {
+  const lines = addOnLines({ fridge: 9, blinds: -3, windows: 1, linens: 0.6, laundry: 2, dishes: Number.NaN });
+  assert.deepEqual(
+    lines.map((line) => [line.id, line.quantity, line.amount]),
+    [
+      ["fridge", 1, 29],
+      ["windows", 1, 39],
+      ["laundry", 1, 25],
+      ["linens", 1, 15],
+    ],
+  );
+
+  const quote = quoteHome({
+    band: "C",
+    bedrooms: 2,
+    fullBaths: 1,
+    halfBaths: 0,
+    frequency: "biweekly",
+    condition: "standard",
+  });
+  assert.equal(quote.custom, false);
+  if (quote.custom || !quote.plan) return;
+  const summary = summarizeQuote({
+    ...quote,
+    addOns: [{ label: "Inside fridge", amount: 29 }],
+  });
+  assert.match(summary, /\$229 per visit before HST, first visit \$279/);
+  assert.match(summary, /Add-ons on the locked price: Inside fridge \$29/);
+  assert.match(summary, /per visit \$258 before HST, first visit \$308/);
 });

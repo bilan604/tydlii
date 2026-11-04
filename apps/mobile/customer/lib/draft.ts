@@ -1,4 +1,4 @@
-import { DEFAULT_QUOTE_INPUT, type BandId, type Condition, type Frequency } from "@tydlii/quote";
+import { DEFAULT_QUOTE_INPUT, emptyAddOns, type AddOnCounts, type BandId, type Condition, type Frequency } from "@tydlii/quote";
 
 export const AREAS = ["CityPlace", "King West", "Liberty Village"] as const;
 export type Area = (typeof AREAS)[number];
@@ -21,6 +21,7 @@ export type Draft = {
   halfBaths: number;
   frequency: Frequency;
   condition: Condition;
+  addOns: AddOnCounts;
   dayId: string;
   windowId: WindowId;
 };
@@ -30,6 +31,7 @@ export const DEFAULT_DRAFT: Draft = {
   unit: "",
   area: "Liberty Village",
   ...DEFAULT_QUOTE_INPUT,
+  addOns: emptyAddOns(),
   dayId: "",
   windowId: "morning",
 };

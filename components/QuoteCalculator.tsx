@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { cad } from "@/lib/format";
 import {
+  ADD_ONS,
   BEDROOM_OPTIONS,
   CONDITIONS,
   DEFAULT_QUOTE_INPUT,
@@ -11,8 +12,13 @@ import {
   HALF_BATH_OPTIONS,
   QUOTE_FIELDS,
   SQFT_BANDS,
+  addOnLineLabel,
+  emptyAddOns,
   firstVisitSentence,
   quotePresentation,
+  stackOnLockedBase,
+  type AddOnCounts,
+  type AddOnId,
   type BandId,
   type Condition,
   type Frequency,
@@ -28,6 +34,7 @@ export type QuoteSnapshot = {
   fullBaths: number;
   halfBaths: number;
   frequency: Frequency;
+  addOns: AddOnCounts;
 };
 
 export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapshot) => void }) {
@@ -37,6 +44,7 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
   const [halfBaths, setHalfBaths] = useState(DEFAULT_QUOTE_INPUT.halfBaths);
   const [frequency, setFrequency] = useState<Frequency>(DEFAULT_QUOTE_INPUT.frequency);
   const [condition, setCondition] = useState<Condition>(DEFAULT_QUOTE_INPUT.condition);
+  const [addOns, setAddOns] = useState<AddOnCounts>(emptyAddOns);
 
   const presented = useMemo(
     () => quotePresentation({ band, bedrooms, fullBaths, halfBaths, frequency, condition }),
@@ -51,10 +59,20 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
       fullBaths,
       halfBaths,
       frequency,
+      addOns,
     });
-  }, [onChange, presented, band, bedrooms, fullBaths, halfBaths, frequency]);
+  }, [onChange, presented, band, bedrooms, fullBaths, halfBaths, frequency, addOns]);
+
+  function setAddOn(id: AddOnId, quantity: number) {
+    const addOn = ADD_ONS.find((item) => item.id === id);
+    if (!addOn) return;
+    const next = Math.min(addOn.max, Math.max(0, quantity));
+    setAddOns((current) => ({ ...current, [id]: next }));
+  }
 
   const headline = presented.custom ? null : presented.headline;
+  const stacked = headline ? stackOnLockedBase(headline.beforeHst, addOns) : null;
+  const firstStacked = presented.custom ? null : stackOnLockedBase(presented.quote.first.beforeHst, addOns);
   const eyebrow = presented.custom ? presented.label : presented.eyebrow;
 
   return (
@@ -130,6 +148,61 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
               </select>
             </label>
           </div>
+
+          <fieldset className="addon-list">
+            <legend>Add-ons</legend>
+            <p className="addon-note">Before HST. Each one is added to the locked price.</p>
+            {ADD_ONS.map((addOn) => {
+              const count = addOns[addOn.id];
+              const counted = addOn.unit === "window" || addOn.unit === "bed";
+              if (!counted) {
+                return (
+                  <label key={addOn.id} className={count > 0 ? "addon is-on" : "addon"}>
+                    <input
+                      type="checkbox"
+                      checked={count > 0}
+                      onChange={(event) => setAddOn(addOn.id, event.target.checked ? 1 : 0)}
+                    />
+                    <span className="addon-copy">
+                      <span className="addon-name">
+                        {addOn.label} <span className="addon-price">{addOn.menuPrice}</span>
+                      </span>
+                      <span className="addon-inclusion">{addOn.inclusion}</span>
+                    </span>
+                  </label>
+                );
+              }
+              return (
+                <div key={addOn.id} className={count > 0 ? "addon is-on" : "addon"}>
+                  <div className="addon-copy">
+                    <span className="addon-name">
+                      {addOn.label} <span className="addon-price">{addOn.menuPrice}</span>
+                    </span>
+                    <span className="addon-inclusion">{addOn.inclusion}</span>
+                  </div>
+                  <div className="addon-step">
+                    <button
+                      type="button"
+                      aria-label={`Fewer ${addOn.label}`}
+                      disabled={count <= 0}
+                      onClick={() => setAddOn(addOn.id, count - 1)}
+                    >
+                      −
+                    </button>
+                    <span>{count}</span>
+                    <button
+                      type="button"
+                      aria-label={`More ${addOn.label}`}
+                      disabled={count >= addOn.max}
+                      onClick={() => setAddOn(addOn.id, count + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </fieldset>
         </div>
 
         <aside className="quote-panel">
@@ -137,7 +210,7 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
             <polygon points="300,0 400,0 400,400 200,400" fill="var(--teal)" opacity="0.22" />
           </svg>
           <div className="panel-copy">
-            {presented.custom || !headline || !quote ? (
+            {presented.custom || !headline || !stacked || !quote ? (
               <>
                 <p className="eyebrow on-dark">{presented.custom ? presented.label : "Custom"}</p>
                 <h3 className="custom-title">A custom, guaranteed quote.</h3>
@@ -150,17 +223,44 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
               <>
                 <p className="eyebrow on-dark">{eyebrow}</p>
                 <p className="sr" aria-live="polite">
-                  {eyebrow}: {cad(headline.beforeHst)} before HST, {cad(headline.withHst, true)} with HST.
+                  {eyebrow}: {cad(stacked.beforeHst)} before HST, {cad(stacked.withHst, true)} with HST.
+                  {stacked.lines.length > 0
+                    ? ` Locked clean ${cad(stacked.baseBeforeHst)}. ${stacked.lines
+                        .map((line) => `${addOnLineLabel(line)} ${cad(line.amount)}`)
+                        .join(", ")}.`
+                    : ""}
                 </p>
                 <div className="price-row">
-                  <span className="quote-price">{cad(headline.beforeHst)}</span>
+                  <span className={stacked.lines.length > 0 ? "quote-price is-detailed" : "quote-price"}>
+                    {cad(stacked.beforeHst)}
+                  </span>
                   <span className="price-tax">+ HST</span>
                 </div>
-                <p className="price-incl">{cad(headline.withHst, true)} including 13% HST</p>
+                <p className="price-incl">{cad(stacked.withHst, true)} including 13% HST</p>
+                {stacked.lines.length > 0 ? (
+                  <ul className="quote-lines">
+                    <li>
+                      <span>Locked clean</span>
+                      <span>{cad(stacked.baseBeforeHst)}</span>
+                    </li>
+                    {stacked.lines.map((line) => (
+                      <li key={line.id}>
+                        <span>{addOnLineLabel(line)}</span>
+                        <span>{cad(line.amount)}</span>
+                      </li>
+                    ))}
+                    <li className="is-total">
+                      <span>Total before HST</span>
+                      <span>{cad(stacked.beforeHst)}</span>
+                    </li>
+                  </ul>
+                ) : null}
                 <div className="rule" />
-                {presented.firstVisit ? (
+                {presented.firstVisit && firstStacked ? (
                   <Check onDark>
-                    {firstVisitSentence(presented.firstVisit.kind, cad(presented.firstVisit.beforeHst))}
+                    {firstStacked.lines.length > 0
+                      ? `${presented.firstVisit.kind === "reset" ? "First visit is a deep Reset clean: " : "First visit is a deeper clean: "}${cad(firstStacked.beforeHst)} + HST, locked clean ${cad(firstStacked.baseBeforeHst)} plus add-ons. Your plan price starts from visit two.`
+                      : firstVisitSentence(presented.firstVisit.kind, cad(presented.firstVisit.beforeHst))}
                   </Check>
                 ) : null}
                 <Check onDark>

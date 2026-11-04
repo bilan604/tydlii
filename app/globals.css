@@ -285,6 +285,8 @@ main.shell {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
 .hero-grid {
@@ -673,8 +675,12 @@ main.shell {
 .wait-card,
 .earn {
   border-radius: 32px;
-  overflow: hidden;
   box-shadow: var(--shadow);
+}
+
+.wait-card,
+.earn {
+  overflow: hidden;
 }
 
 .quote-split {
@@ -698,6 +704,7 @@ main.shell {
 .quote-form {
   gap: 24px;
   padding: clamp(24px, 4vw, 48px);
+  border-radius: 32px 0 0 32px;
 }
 
 .quote-form h3 {
@@ -708,16 +715,17 @@ main.shell {
 
 .quote-panel {
   position: relative;
-  overflow: hidden;
   background: var(--navy);
   color: var(--white);
   padding: clamp(28px, 4vw, 52px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  border-radius: 0 32px 32px 0;
 }
 
 .panel-copy {
-  position: relative;
+  position: sticky;
+  top: 24px;
   gap: 18px;
 }
 
@@ -790,6 +798,149 @@ main.shell {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.addon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.addon-list legend {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  padding: 0;
+  margin-bottom: 2px;
+}
+
+.addon-note {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.addon {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--line-weak);
+  border-radius: 16px;
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.addon.is-on {
+  border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 8%, var(--paper));
+}
+
+.addon input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--teal);
+}
+
+.addon-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.addon-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.addon-price {
+  color: var(--teal);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.addon-inclusion {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.addon:has(.addon-step) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  cursor: default;
+}
+
+.addon-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.addon-step span {
+  min-width: 1.25rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.addon-step button {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--white);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+}
+
+.addon-step button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.quote-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.quote-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--on-ink) 78%, transparent);
+}
+
+.quote-lines li span:last-child {
+  font-weight: 600;
+  color: var(--white);
+  white-space: nowrap;
+}
+
+.quote-lines .is-total {
+  border-top: 1px solid color-mix(in srgb, var(--on-ink) 28%, transparent);
+  padding-top: 8px;
+  color: var(--white);
+  font-weight: 600;
+}
+
+.quote-price.is-detailed {
+  font-size: clamp(48px, 6vw, 72px);
 }
 
 .field {
@@ -1055,6 +1206,14 @@ main.shell {
   .quote-split,
   .wait-card {
     grid-template-columns: 1fr;
+  }
+
+  .quote-form {
+    border-radius: 32px 32px 0 0;
+  }
+
+  .quote-panel {
+    border-radius: 0 0 32px 32px;
   }
 
   .hero-art {

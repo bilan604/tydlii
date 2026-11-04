@@ -1,9 +1,14 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_DRAFT, upcomingDays, windowLabel, type Draft } from "@/lib/draft";
-import { DEFAULT_QUOTE_INPUT } from "@tydlii/quote";
+import { DEFAULT_QUOTE_INPUT, addOnLineLabel } from "@tydlii/quote";
 import { presentQuote } from "@/lib/present";
 
 export type JobStatus = "enroute" | "cleaning" | "done";
+
+export type VisitLine = {
+  label: string;
+  amount: number;
+};
 
 export type Visit = {
   addressLine: string;
@@ -14,6 +19,7 @@ export type Visit = {
   withHst: number;
   planBeforeHst: number | null;
   frequencyLabel: string;
+  lines: VisitLine[];
   sample: boolean;
 };
 
@@ -50,10 +56,20 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         area: draft.area,
         when: `${day?.label ?? "Scheduled"} · ${windowLabel(draft.windowId)}`,
         summary: `${presented.quote.bedrooms}-bedroom · ${presented.quote.label}`,
-        beforeHst: presented.quote.first.beforeHst,
-        withHst: presented.quote.first.withHst,
-        planBeforeHst: presented.quote.plan?.beforeHst ?? null,
+        beforeHst: presented.first.beforeHst,
+        withHst: presented.first.withHst,
+        planBeforeHst: presented.plan?.beforeHst ?? null,
         frequencyLabel: presented.quote.frequencyLabel,
+        lines:
+          presented.first.lines.length === 0
+            ? []
+            : [
+                { label: "Locked clean", amount: presented.first.baseBeforeHst },
+                ...presented.first.lines.map((line) => ({
+                  label: addOnLineLabel(line),
+                  amount: line.amount,
+                })),
+              ],
         sample: false,
       });
       setStatus("enroute");
@@ -71,6 +87,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         withHst: presented.headline.withHst,
         planBeforeHst: presented.quote.plan.beforeHst,
         frequencyLabel: presented.quote.frequencyLabel,
+        lines: [],
         sample: true,
       });
       setStatus("enroute");

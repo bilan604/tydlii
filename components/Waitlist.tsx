@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AREAS, type AreaName } from "@/lib/areas";
 import { CLEANER_ONBOARDING_FORM_URL } from "@/lib/cleaner-onboarding";
 import { cad } from "@/lib/format";
-import { FREQUENCIES } from "@/lib/pricing";
+import { FREQUENCIES, addOnLineLabel, stackOnLockedBase, type Quote } from "@/lib/pricing";
 import {
   REFERRAL_CREDIT_PROMISE,
   REFERRAL_FRIEND_OFFER,
@@ -30,11 +30,28 @@ type Status = "idle" | "sending" | "done" | "duplicate" | "error";
 
 function quoteLine(snapshot: QuoteSnapshot): string {
   const half = snapshot.halfBaths > 0 ? ` + ${snapshot.halfBaths} half` : "";
-  const price = snapshot.quote.custom
-    ? "custom quote"
-    : `${cad((snapshot.quote.plan ?? snapshot.quote.first).beforeHst)} + HST`;
   const frequency = FREQUENCIES.find((item) => item.id === snapshot.frequency);
-  return `${snapshot.bedrooms} bed, ${snapshot.fullBaths} bath${half}, ${snapshot.quote.label.toLowerCase()}, ${frequency?.label.toLowerCase() ?? snapshot.frequency}, ${price}`;
+  const home = `${snapshot.bedrooms} bed, ${snapshot.fullBaths} bath${half}, ${snapshot.quote.label.toLowerCase()}, ${frequency?.label.toLowerCase() ?? snapshot.frequency}`;
+  if (snapshot.quote.custom) return `${home}, custom quote`;
+  const locked = (snapshot.quote.plan ?? snapshot.quote.first).beforeHst;
+  const stacked = stackOnLockedBase(locked, snapshot.addOns);
+  if (stacked.lines.length === 0) return `${home}, ${cad(locked)} + HST`;
+  const extras = stacked.lines.map((line) => `${addOnLineLabel(line)} ${cad(line.amount)}`).join(", ");
+  return `${home}, ${cad(stacked.beforeHst)} + HST, including ${extras}`;
+}
+
+function quotePayload(snapshot: QuoteSnapshot): Quote & { addOns?: { label: string; amount: number }[] } {
+  if (snapshot.quote.custom) return snapshot.quote;
+  const locked = (snapshot.quote.plan ?? snapshot.quote.first).beforeHst;
+  const stacked = stackOnLockedBase(locked, snapshot.addOns);
+  if (stacked.lines.length === 0) return snapshot.quote;
+  return {
+    ...snapshot.quote,
+    addOns: stacked.lines.map((line) => ({
+      label: addOnLineLabel(line),
+      amount: line.amount,
+    })),
+  };
 }
 
 function joinNotes(lines: string[], note: string): string {
@@ -274,7 +291,7 @@ export function CustomerWaitlist({
         consent: true,
         [HONEYPOT_FIELD]: honeypot,
         neighbourhoods,
-        quote: snapshot.quote,
+        quote: quotePayload(snapshot),
         ref: rememberedReferralCode(),
       },
       accessKey,

@@ -7,7 +7,7 @@ import { useBooking } from "@/lib/booking";
 import { upcomingDays, windowLabel } from "@/lib/draft";
 import { firstVisitSentence } from "@tydlii/quote";
 import { cad } from "@/lib/format";
-import { presentQuote } from "@/lib/present";
+import { presentQuote, receiptRows } from "@/lib/present";
 import { colors } from "@/theme";
 import {
   amountToCents,
@@ -21,7 +21,7 @@ export default function PayScreen() {
   const day = upcomingDays().find((item) => item.id === draft.dayId);
   const ready = draft.address.trim().length >= 5 && Boolean(day) && !presented.custom;
   const [sheetOpen, setSheetOpen] = useState(false);
-  const amountCents = ready && !presented.custom ? amountToCents(presented.quote.first.withHst) : 0;
+  const amountCents = ready && !presented.custom ? amountToCents(presented.first.withHst) : 0;
   const stripe =
     ready && !presented.custom
       ? resolveStripeTestConfig(
@@ -38,7 +38,7 @@ export default function PayScreen() {
         ready && !presented.custom ? (
           <View style={styles.footer}>
             <Text style={styles.totalLabel}>Total today</Text>
-            <Text style={styles.total}>{cad(presented.quote.first.withHst, true)}</Text>
+            <Text style={styles.total}>{cad(presented.first.withHst, true)}</Text>
             {stripe?.ok ? (
               <Button label="Pay with test card" onPress={() => setSheetOpen(true)} />
             ) : (
@@ -77,13 +77,27 @@ export default function PayScreen() {
           </Card>
 
           <View style={styles.rows}>
-            <Row label="This visit, before HST" value={cad(presented.quote.first.beforeHst)} />
-            <Row label="With 13% HST" value={cad(presented.quote.first.withHst, true)} />
+            {presented.first.lines.length > 0 ? (
+              <>
+                {receiptRows(presented.first).map((row) => (
+                  <Row key={row.label} label={row.label} value={cad(row.amount)} />
+                ))}
+                <Row label="Total before HST" value={cad(presented.first.beforeHst)} />
+              </>
+            ) : (
+              <Row label="This visit, before HST" value={cad(presented.first.beforeHst)} />
+            )}
+            <Row label="With 13% HST" value={cad(presented.first.withHst, true)} />
           </View>
 
           {presented.firstVisit ? (
             <Text style={styles.body}>
-              {firstVisitSentence(presented.firstVisit.kind, cad(presented.firstVisit.beforeHst))}
+              {presented.first.lines.length > 0
+                ? `First visit is ${cad(presented.first.beforeHst)} + HST. Locked clean ${cad(presented.first.baseBeforeHst)} plus add-ons. Your plan price starts from visit two.`
+                : firstVisitSentence(presented.firstVisit.kind, cad(presented.firstVisit.beforeHst))}
+              {presented.plan && presented.plan.lines.length > 0
+                ? ` From visit two, ${cad(presented.plan.beforeHst)} + HST (locked clean ${cad(presented.plan.baseBeforeHst)} plus add-ons).`
+                : ""}
             </Text>
           ) : null}
 
@@ -101,7 +115,7 @@ export default function PayScreen() {
             <TestPaymentSheet
               visible={sheetOpen}
               config={stripe.config}
-              amountLabel={cad(presented.quote.first.withHst, true)}
+              amountLabel={cad(presented.first.withHst, true)}
               onClose={() => setSheetOpen(false)}
               onPaid={() => {
                 setSheetOpen(false);
