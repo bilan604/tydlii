@@ -55,6 +55,12 @@ export default function BookScreen() {
       }
     >
       <Text style={styles.intro}>Locked before you book. The same bands as the Toronto price list.</Text>
+      <View style={styles.coverage}>
+        <Text style={styles.coverageHint}>
+          Soft launch: Toronto, Ontario. Other provinces are listed and not bookable yet.
+        </Text>
+        <Button kind="secondary" label="Canada coverage" onPress={() => router.push("/coverage")} />
+      </View>
 
       <Field
         label="Street address"
@@ -169,7 +175,9 @@ export default function BookScreen() {
 }
 
 const styles = StyleSheet.create({
-  intro: { color: colors.ink, fontSize: 16, lineHeight: 22, marginBottom: 20 },
+  intro: { color: colors.ink, fontSize: 16, lineHeight: 22, marginBottom: 12 },
+  coverage: { gap: 10, marginBottom: 20 },
+  coverageHint: { color: colors.ink, fontSize: 14, lineHeight: 20 },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   bandRow: { gap: 8, paddingRight: 8 },
   hint: { color: colors.ink, fontSize: 14, lineHeight: 20, marginTop: 10 },

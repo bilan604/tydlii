@@ -45,6 +45,7 @@ export default function HomeScreen() {
 
         <View style={styles.actions}>
           <Button tone="ink" label="Book a clean" onPress={() => router.push("/book")} />
+          <Button kind="quiet" tone="ink" label="Settings" onPress={() => router.push("/settings")} />
           {visit ? null : (
             <Button
               kind="quiet"
@@ -56,7 +57,9 @@ export default function HomeScreen() {
               }}
             />
           )}
-          <Text style={styles.fine}>Sample data only. The live map simulates GPS. Payment is a preview.</Text>
+          <Text style={styles.fine}>
+            Sample data only. The live visit is a MapLibre map. Payment is a test-mode sheet and nothing is charged.
+          </Text>
           <View style={styles.legalRow}>
             <Pressable accessibilityRole="link" onPress={() => router.push("/privacy")}>
               <Text style={styles.legal}>Privacy</Text>

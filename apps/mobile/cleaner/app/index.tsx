@@ -109,6 +109,7 @@ export default function HomeScreen() {
 
         <View style={styles.actions}>
           <Button kind="quiet" tone="ink" label="Earnings" onPress={() => router.push("/earnings")} />
+          <Button kind="quiet" tone="ink" label="Settings" onPress={() => router.push("/settings")} />
           <Text style={styles.fine}>
             Sample data only. This preview simulates GPS. A store build asks for location only during an active
             job, then stops. Nothing is paid out.

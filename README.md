@@ -6,7 +6,7 @@ The promise on the site is a **Tydlii-certified cleaner in the booked window**, 
 
 ## Native apps
 
-Customer and cleaner apps live in [`apps/mobile`](apps/mobile/README.md). They are Expo apps and are not part of the root npm install. The live visit map is MapLibre with free OpenStreetMap tiles. Store submission is not set up.
+Customer and cleaner apps live in [`apps/mobile`](apps/mobile/README.md). They stay two apps and are not part of the root npm install. The live visit map is MapLibre with free OpenStreetMap tiles. Store scaffolding adds privacy and terms, an account-deletion stub, a Stripe test-mode sheet that refuses a live key, a Canada coverage model, and `eas.json` preview/production profiles. There is no submit profile. Do not run `eas submit`.
 
 ## Local
 

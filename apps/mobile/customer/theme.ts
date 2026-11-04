@@ -1,7 +1,9 @@
+import { brand } from "../shared/src/brand";
+
 export const colors = {
-  ink: "#070707",
-  teal: "#04a3ac",
-  sage: "#5c9396",
-  mist: "#e5f3f4",
+  ink: brand.ink,
+  teal: brand.teal,
+  sage: brand.sage,
+  mist: brand.mist,
   white: "#ffffff",
 } as const;
