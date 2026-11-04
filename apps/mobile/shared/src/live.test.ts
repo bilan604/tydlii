@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { densify, distanceMeters, etaMinutes, layoutVisit } from "./geo";
+import { buildLiveMapHtml, OSM_TILE_URL } from "./live-map-html";
 import { DeviceGpsStream, SimulatedGpsStream } from "./gps";
 import { VisitPlayback } from "./playback";
 import { LIBERTY_HOME, LIBERTY_ROUTE } from "./sample-job";
@@ -45,6 +46,23 @@ describe("geo", () => {
     assert.ok(layout.cleaner);
     assert.ok(layout.cleaner.left < layout.home.left);
     assert.equal(densify(LIBERTY_ROUTE, 8).length, 8);
+  });
+});
+
+describe("live map", () => {
+  it("embeds MapLibre, OpenStreetMap tiles, and the Tydlii pin colours", () => {
+    const html = buildLiveMapHtml({
+      home: LIBERTY_HOME,
+      route: LIBERTY_ROUTE,
+      cleaner: LIBERTY_ROUTE[0],
+    });
+    assert.match(html, /maplibre-gl/);
+    assert.match(html, new RegExp(OSM_TILE_URL.split("/{z}")[0].replace(/[.]/g, "\\.")));
+    assert.match(html, /#04a3ac/);
+    assert.match(html, /#070707/);
+    assert.match(html, /OpenStreetMap/);
+    assert.equal(/google/i.test(html), false);
+    assert.match(html, new RegExp(LIBERTY_HOME.longitude.toString()));
   });
 });
 

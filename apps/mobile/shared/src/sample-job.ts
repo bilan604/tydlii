@@ -16,7 +16,6 @@ export const LIBERTY_ROUTE: LatLng[] = [
 export const LIBERTY_JOB_ID = "sample-liberty";
 
 /**
- * Optional Google Maps key for a later native tile provider.
- * The Expo web preview draws the route from these coordinates and does not call Google.
+ * Unused. The live visit map is MapLibre with free OpenStreetMap tiles and does not call Google.
  */
 export const MAPS_API_KEY_ENV = "EXPO_PUBLIC_MAPS_API_KEY";
