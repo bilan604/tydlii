@@ -1,0 +1,91 @@
+# Tydlii mobile
+
+Two Expo apps for a later App Store and Play Store release. They share the Tydlii colours and the smile wordmark. They do not talk to the website, Stripe, or a maps provider. Every address, offer, payment, and map in these apps is sample data.
+
+| App | Path | Bundle id (placeholder) |
+| --- | --- | --- |
+| Customer | `apps/mobile/customer` | `com.tydlii.customer` |
+| Cleaner | `apps/mobile/cleaner` | `com.tydlii.cleaner` |
+
+The marketing site stays at the repo root. Do not add these apps to the root npm workspaces. `npm ci` and `npm run build` there are still the Next.js site only.
+
+## Brand
+
+| Token | Hex |
+| --- | --- |
+| Ink | `#070707` |
+| Teal | `#04a3ac` |
+| Sage | `#5c9396` |
+| Mist | `#e5f3f4` |
+
+The smile wordmark is copied from `public/brand/wordmark.png` (ink) and `public/brand/wordmark-light.png` (on ink). The app icon is `public/brand/app-icon.png`. Replace those files in each app's `assets/` if the master artwork changes.
+
+Quote math in each app's `lib/pricing.ts` is a copy of the website `lib/pricing.ts`. A Liberty Village 2-bedroom, 800–999 sq ft, every 2 weeks, maintained, is **$229 + HST** per plan visit. The cleaner sample offer pays **67%** of that, **$153.43**.
+
+## Customer
+
+Entry screen, then:
+
+1. **Book** — street address, launch neighbourhood (CityPlace, King West, Liberty Village), sq ft band, beds and baths, frequency, condition, and the flat price.
+2. **Schedule** — a day and an arrival window.
+3. **Pay** — a checkout stub. No card number. Nothing is charged.
+4. **Live visit** — a drawn map and a status control: En route, Cleaning, Done.
+
+"Preview a sample visit" opens the map without a booking. The sample uses the $229 site preview, not a dispatched cleaner.
+
+## Cleaner
+
+Entry screen with **Go online**. While online, one sample offer shows the area, home, time, and dollar share before accept or decline.
+
+1. **Navigate** — a drawn route and sample steps. It does not open a maps app.
+2. **On the visit** — Arrived, Start, Done.
+3. **Earnings** — a ledger that updates when the sample visit is marked done. Nothing is paid out.
+
+Replay of the sample offer does not add a second payout.
+
+## Not in this version
+
+- Chat
+- Background location, or any GPS while a job is closed
+- Stripe, card entry, or another payment provider
+- Google Maps, MapKit, or any maps API key
+- Accounts, push, or a shared backend
+
+Location copy in the apps describes the preview. Neither app asks for location permission.
+
+## Run on Expo Go or a simulator
+
+Requires Node.js 22+. Use Expo Go that supports **SDK 57** (the SDK these projects pin). One Metro server at a time, or start the second with `--port 8082`.
+
+Customer:
+
+```bash
+cd apps/mobile/customer
+npm ci
+npx expo start
+```
+
+Cleaner:
+
+```bash
+cd apps/mobile/cleaner
+npm ci
+npx expo start
+```
+
+Then:
+
+- **Phone:** install Expo Go, join the same network as the computer, and scan the QR code. If the phone cannot see the computer, `npx expo start --tunnel` can prompt to install `@expo/ngrok`.
+- **iOS simulator:** macOS with Xcode. In the Expo terminal, press `i`.
+- **Android emulator:** Android Studio, with an emulator already running. Press `a`.
+- **Web preview:** press `w`. This is a convenience view of the same screens, not the store build.
+
+`npm run typecheck` in each app runs `tsc --noEmit`.
+
+## TestFlight and Play Store
+
+Do not submit a build from this scaffold.
+
+TestFlight and Play Console need a founder's OK first: legal name, bundle ids, icons, privacy labels, and any real payments or maps. These projects do not include an EAS submit profile. Uploading a binary is out of scope until that approval is explicit.
+
+Store builds, when they are approved, are two apps (`com.tydlii.customer` and `com.tydlii.cleaner`), not one listing with a hidden switch.

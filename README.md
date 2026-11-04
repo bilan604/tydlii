@@ -4,6 +4,10 @@ Marketing and waitlist site for [tydlii.com](https://tydlii.com). The homepage i
 
 The promise on the site is a **Tydlii-certified cleaner in the booked window**, and a **re-clean if a Standard clean is missed**. It is not a same-cleaner or preferred-cleaner promise.
 
+## Native apps
+
+Customer and cleaner scaffolds live in [`apps/mobile`](apps/mobile/README.md). They are Expo apps with sample data only. They are not part of the root npm install. Store submission needs a founder's OK and is not set up here.
+
 ## Local
 
 Requires Node.js 22+.
@@ -270,6 +274,7 @@ If the DNS record is proxied (orange cloud):
 ## What’s in the repo
 
 - `app/` — Next.js App Router pages, favicon, `POST /api/waitlist`, `/refer`, and `/r/[code]`
+- `apps/mobile/` — Expo customer and cleaner apps (sample data, separate installs)
 - `public/email/` — welcome hero (woman and dog) and the email wordmark
 - `components/` — Option A landing: hero, five pillars, quote, how it works, and the two waitlists
 - `lib/pricing.ts` — quote math
