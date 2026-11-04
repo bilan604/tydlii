@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port ${PORT:-3000}",
-    "test": "tsx --test lib/pricing.test.ts lib/mobile-pricing-sync.test.ts lib/waitlist.test.ts lib/waitlist-store.test.ts lib/waitlist-api.test.ts lib/waitlist-notify.test.ts lib/referral.test.ts lib/welcome-email.test.ts lib/cleaner-welcome-email.test.ts lib/footer.test.ts apps/mobile/shared/src/live.test.ts apps/mobile/shared/src/map-policy.test.ts apps/mobile/shared/src/payments.test.ts apps/mobile/shared/src/coverage.test.ts apps/mobile/shared/src/account.test.ts apps/mobile/shared/src/store.test.ts",
+    "test": "tsx --test lib/pricing.test.ts lib/mobile-pricing-sync.test.ts lib/waitlist.test.ts lib/waitlist-store.test.ts lib/waitlist-api.test.ts lib/waitlist-notify.test.ts lib/referral.test.ts lib/welcome-email.test.ts lib/cleaner-welcome-email.test.ts lib/footer.test.ts lib/legal-pages.test.ts apps/mobile/shared/src/live.test.ts apps/mobile/shared/src/map-policy.test.ts apps/mobile/shared/src/payments.test.ts apps/mobile/shared/src/coverage.test.ts apps/mobile/shared/src/account.test.ts apps/mobile/shared/src/store.test.ts",
     "waitlist:reset": "node scripts/reset-waitlist-email.mjs"
   },
   "engines": {

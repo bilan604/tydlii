@@ -28,6 +28,16 @@ npm start
 
 `npm start` listens on `0.0.0.0` and `$PORT` (default 3000), which is what Render expects.
 
+## Privacy and terms
+
+`/privacy` and `/terms` are the pages the customer and cleaner apps already open (`https://tydlii.com/privacy` and `https://tydlii.com/terms`). They use the same marketing chrome as the homepage: ink hero, smile wordmark on dark, Outfit, and the site footer. The footer links to both.
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000/privacy](http://localhost:3000/privacy) and [http://localhost:3000/terms](http://localhost:3000/terms). `npm test` renders both pages. Merge and deploy wait for a founder’s approval. The pages are an MVP for store review, not a lawyer’s sign-off.
+
 ## Waitlist endpoint
 
 `POST /api/waitlist` accepts JSON.
