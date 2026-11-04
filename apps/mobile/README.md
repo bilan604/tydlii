@@ -43,7 +43,7 @@ Entry screen, then:
 3. **Pay** — Stripe PaymentSheet stand-in in test mode. The button opens a sheet, confirms a placeholder card, and does not call Stripe. `pk_live_` keys are refused, including odd casing and a value that also contains `pk_test_`. Nothing is charged.
 4. **Live visit** — a MapLibre map of the real streets and buildings. Teal cleaner pin, ink home pin, teal route. The cleaner pin moves on a simulated GPS trace. Status chips: En route, Arrived, Cleaning, Done. ETA counts down, then the trace stops at Done.
 
-**Settings** opens privacy, terms, delete account, and Canada coverage. Delete account returns "Not sent" until an account API exists. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
+**Settings** opens privacy, terms, delete account, and Canada coverage. Delete account clears the local copy, says "Not sent", and opens the live privacy section. Privacy, terms, and delete account tell people to email `teamtydlii@gmail.com` for support and deletion. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
 
 "Preview a sample visit" opens the map without a booking. The sample uses the $229 site preview, not a dispatched cleaner. The customer's phone is not tracked.
 

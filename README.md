@@ -82,12 +82,12 @@ After a cleaner joins on the site, the “You're on the cleaner list” screen u
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `RESEND_API_KEY` | No | Resend API key. Server-only. Not inlined into the client bundle. |
-| `EMAIL_FROM` | No | Sender on a domain verified in Resend, for example `Tydlii <hello@tydlii.com>`. |
+| `EMAIL_FROM` | No | Outbound Resend From on the verified domain, for example `Tydlii <hello@tydlii.com>`. Not a support inbox. |
 
 Render steps (do this before relying on the inbox; the waitlist works without them):
 
 1. In Resend, add and verify `tydlii.com` (the DNS records Resend shows). Create an API key.
-2. On the Render service, set `RESEND_API_KEY` and `EMAIL_FROM=Tydlii <hello@tydlii.com>`. These are runtime env vars. A restart is enough; they are not baked into the client bundle.
+2. On the Render service, set `RESEND_API_KEY` and `EMAIL_FROM=Tydlii <hello@tydlii.com>`. These are runtime env vars. A restart is enough; they are not baked into the client bundle. `hello@tydlii.com` is the send-from identity only. Privacy, deletion, and support go to `teamtydlii@gmail.com`. Welcome replies are routed there.
 3. Until the domain is verified, a first test can use `EMAIL_FROM=Tydlii <onboarding@resend.dev>`. Resend only delivers that sender to the email address on the Resend account.
 
 ### Referrals

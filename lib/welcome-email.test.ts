@@ -175,12 +175,16 @@ test("Resend is posted only when both env vars are set, and a non-2xx does not t
   const body = JSON.parse(String(calls[0].init?.body)) as {
     from: string;
     to: string[];
+    reply_to: string;
     subject: string;
     html: string;
     text: string;
     attachments: { content_id: string; filename: string }[];
   };
   assert.equal(body.from, "Tydlii <hello@tydlii.com>");
+  assert.equal(body.reply_to, "teamtydlii@gmail.com");
+  assert.doesNotMatch(body.html, /hello@tydlii\.com/);
+  assert.doesNotMatch(body.text, /hello@tydlii\.com/);
   assert.deepEqual(body.to, ["mina@example.com"]);
   assert.equal(body.subject, WELCOME_SUBJECT);
   assert.match(body.html, /Get your referral link/);

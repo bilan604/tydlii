@@ -2,7 +2,7 @@ import { DELETE_ACCOUNT_URL } from "@tydlii/auth";
 import { useAuth } from "@tydlii/auth/react";
 import { useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
-import { requestAccountDeletion } from "../../shared/src";
+import { CONTACT_EMAIL, requestAccountDeletion } from "../../shared/src";
 import { Button, Card, Screen } from "@/components/ui";
 import { colors } from "@/theme";
 
@@ -17,7 +17,15 @@ export default function DeleteAccountScreen() {
       <View style={styles.stack}>
         <Text style={styles.body}>
           This removes the account on this device and signs you out. It does not call Tydlii. The live deletion
-          section is on tydlii.com/privacy.
+          section is on tydlii.com/privacy. To ask for deletion, email{" "}
+          <Text
+            accessibilityRole="link"
+            style={styles.link}
+            onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)}
+          >
+            {CONTACT_EMAIL}
+          </Text>
+          .
         </Text>
         <Card>
           <Text style={styles.title}>{role === "cleaner" ? "Cleaner profile" : "Customer profile"}</Text>
@@ -47,6 +55,7 @@ export default function DeleteAccountScreen() {
 const styles = StyleSheet.create({
   stack: { gap: 12 },
   body: { color: colors.ink, fontSize: 15, lineHeight: 22 },
+  link: { color: colors.teal, fontWeight: "600", textDecorationLine: "underline" },
   title: { color: colors.ink, fontSize: 18, fontWeight: "600", marginBottom: 6 },
   message: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "600" },
 });
