@@ -58,9 +58,12 @@ export default function HomeScreen() {
             />
           )}
           <Text style={styles.fine}>
-            Sample data only. The live visit is a MapLibre map. Payment is a test-mode sheet and nothing is charged.
+            Sample data only. The live visit is a MapLibre map. Checkout is a Stripe test sheet and does not charge.
           </Text>
           <View style={styles.legalRow}>
+            <Pressable accessibilityRole="link" onPress={() => router.push("/coverage")}>
+              <Text style={styles.legal}>Coverage</Text>
+            </Pressable>
             <Pressable accessibilityRole="link" onPress={() => router.push("/privacy")}>
               <Text style={styles.legal}>Privacy</Text>
             </Pressable>
@@ -109,6 +112,6 @@ const styles = StyleSheet.create({
   cardTax: { color: colors.ink, fontSize: 16, fontWeight: "600" },
   actions: { gap: 10 },
   fine: { color: colors.mist, fontSize: 13, lineHeight: 18, textAlign: "center" },
-  legalRow: { flexDirection: "row", justifyContent: "center", gap: 20 },
+  legalRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 20 },
   legal: { color: colors.mist, fontSize: 14, fontWeight: "600", textDecorationLine: "underline" },
 });

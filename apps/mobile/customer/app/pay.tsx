@@ -1,12 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import {
-  STRIPE_TEST_KEY_PLACEHOLDER,
-  amountToCents,
-  resolveStripeTestConfig,
-  type PaymentSheetConfig,
-} from "../../shared/src";
 import { TestPaymentSheet } from "@/components/TestPaymentSheet";
 import { Button, Card, Screen } from "@/components/ui";
 import { useBooking } from "@/lib/booking";
@@ -14,34 +8,26 @@ import { upcomingDays, windowLabel } from "@/lib/draft";
 import { cad } from "@/lib/format";
 import { presentQuote } from "@/lib/present";
 import { colors } from "@/theme";
-
-function publishableKey(): string {
-  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-  return env?.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || STRIPE_TEST_KEY_PLACEHOLDER;
-}
+import {
+  amountToCents,
+  maskPublishableKey,
+  resolveStripeTestConfig,
+} from "../../shared/src/payments";
 
 export default function PayScreen() {
   const { draft, confirm } = useBooking();
   const presented = presentQuote(draft);
   const day = upcomingDays().find((item) => item.id === draft.dayId);
   const ready = draft.address.trim().length >= 5 && Boolean(day) && !presented.custom;
-  const [sheet, setSheet] = useState<PaymentSheetConfig | null>(null);
-  const [error, setError] = useState("");
-
-  function openSheet() {
-    if (presented.custom) return;
-    const resolved = resolveStripeTestConfig(
-      { publishableKey: publishableKey() },
-      amountToCents(presented.quote.first.withHst),
-    );
-    if (!resolved.ok) {
-      setError(resolved.reason);
-      setSheet(null);
-      return;
-    }
-    setError("");
-    setSheet(resolved.config);
-  }
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const amountCents = ready && !presented.custom ? amountToCents(presented.quote.first.withHst) : 0;
+  const stripe =
+    ready && !presented.custom
+      ? resolveStripeTestConfig(
+          { publishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY },
+          amountCents,
+        )
+      : null;
 
   return (
     <Screen
@@ -50,10 +36,18 @@ export default function PayScreen() {
       footer={
         ready && !presented.custom ? (
           <View style={styles.footer}>
-            <Text style={styles.totalLabel}>Total today · test mode</Text>
+            <Text style={styles.totalLabel}>Total today</Text>
             <Text style={styles.total}>{cad(presented.quote.first.withHst, true)}</Text>
-            <Button label="Pay in test mode" onPress={openSheet} />
-            <Text style={styles.fine}>Test PaymentSheet. No charge, and a live Stripe key is refused.</Text>
+            {stripe?.ok ? (
+              <Button label="Pay with test card" onPress={() => setSheetOpen(true)} />
+            ) : (
+              <Button label="Payment unavailable" disabled onPress={() => {}} />
+            )}
+            <Text style={styles.fine}>
+              {stripe?.ok
+                ? "Test mode. The sheet does not call Stripe, and nothing is charged."
+                : stripe?.reason}
+            </Text>
           </View>
         ) : (
           <Button label="Back to booking" onPress={() => router.replace("/book")} />
@@ -95,33 +89,32 @@ export default function PayScreen() {
 
           <Card>
             <Text style={styles.kicker}>Payment</Text>
-            <Text style={styles.title}>Test mode</Text>
+            <Text style={styles.title}>Stripe PaymentSheet</Text>
             <Text style={styles.body}>
-              The sheet uses a pk_test_ publishable key. It does not create a PaymentIntent and it does not store a
-              card. Swap in the Stripe SDK when the founder account exists.
+              {stripe?.ok
+                ? `Test mode · ${maskPublishableKey(stripe.config.publishableKey)}. No PaymentIntent is created, and a pk_live_ key is refused.`
+                : stripe?.reason}
             </Text>
           </Card>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Text style={styles.body}>
-            The price you see is the price for the home you described. A Tydlii-certified cleaner comes in the
-            booked window. Re-clean if a Standard clean is missed.
-          </Text>
-
-          {sheet ? (
+          {stripe?.ok && !presented.custom ? (
             <TestPaymentSheet
-              visible
-              config={sheet}
+              visible={sheetOpen}
+              config={stripe.config}
               amountLabel={cad(presented.quote.first.withHst, true)}
-              onClose={() => setSheet(null)}
+              onClose={() => setSheetOpen(false)}
               onPaid={() => {
-                setSheet(null);
+                setSheetOpen(false);
                 confirm();
                 router.replace("/job");
               }}
             />
           ) : null}
+
+          <Text style={styles.body}>
+            The price you see is the price for the home you described. A Tydlii-certified cleaner comes in the
+            booked window. Re-clean if a Standard clean is missed.
+          </Text>
         </>
       )}
     </Screen>
@@ -142,7 +135,6 @@ const styles = StyleSheet.create({
   kicker: { color: colors.ink, fontSize: 13, fontWeight: "600", marginBottom: 4 },
   title: { color: colors.ink, fontSize: 22, fontWeight: "600", letterSpacing: -0.4 },
   body: { color: colors.ink, fontSize: 15, lineHeight: 22, marginTop: 8 },
-  error: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "700" },
   rows: { marginTop: 16, marginBottom: 8, gap: 10 },
   row: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
   rowLabel: { color: colors.ink, fontSize: 15, flex: 1 },
