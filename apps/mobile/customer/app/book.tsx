@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Block, Button, Chip, Field, Screen, Stepper } from "@/components/ui";
 import {
   AREAS,
@@ -55,12 +55,9 @@ export default function BookScreen() {
       }
     >
       <Text style={styles.intro}>Locked before you book. The same bands as the Toronto price list.</Text>
-      <View style={styles.coverage}>
-        <Text style={styles.coverageHint}>
-          Soft launch: Toronto, Ontario. Other provinces are listed and not bookable yet.
-        </Text>
-        <Button kind="secondary" label="Canada coverage" onPress={() => router.push("/coverage")} />
-      </View>
+      <Pressable accessibilityRole="link" onPress={() => router.push("/coverage")}>
+        <Text style={styles.coverage}>Toronto is the soft launch. See where Canada opens next.</Text>
+      </Pressable>
 
       <Field
         label="Street address"
@@ -175,9 +172,16 @@ export default function BookScreen() {
 }
 
 const styles = StyleSheet.create({
-  intro: { color: colors.ink, fontSize: 16, lineHeight: 22, marginBottom: 12 },
-  coverage: { gap: 10, marginBottom: 20 },
-  coverageHint: { color: colors.ink, fontSize: 14, lineHeight: 20 },
+  intro: { color: colors.ink, fontSize: 16, lineHeight: 22 },
+  coverage: {
+    color: colors.teal,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+    marginTop: 8,
+    marginBottom: 20,
+  },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   bandRow: { gap: 8, paddingRight: 8 },
   hint: { color: colors.ink, fontSize: 14, lineHeight: 20, marginTop: 10 },

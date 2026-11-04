@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   createTestPaymentSheet,
   maskPublishableKey,
   type PaymentSheetConfig,
-} from "../../shared/src";
+} from "../../shared/src/payments";
 import { colors } from "@/theme";
 
 export function TestPaymentSheet({
@@ -19,32 +21,53 @@ export function TestPaymentSheet({
   onClose: () => void;
   onPaid: () => void;
 }) {
+  const insets = useSafeAreaInsets();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   async function confirm() {
-    const sheet = createTestPaymentSheet();
-    await sheet.init(config);
-    const result = await sheet.present();
-    if (result.status === "completed") onPaid();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const sheet = createTestPaymentSheet();
+      await sheet.init(config);
+      const result = await sheet.present();
+      if (result.status === "completed" && result.testMode) onPaid();
+      else setError("Test payment did not complete.");
+    } catch {
+      setError("Test payment was refused.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <Text style={styles.kicker}>Stripe PaymentSheet · test mode</Text>
           <Text accessibilityRole="header" style={styles.title}>
             Pay {amountLabel}
           </Text>
           <Text style={styles.body}>
-            Nothing is sent to Stripe. The publishable key is {maskPublishableKey(config.publishableKey)}. A live key
-            is refused.
+            Tydlii · {config.currency.toUpperCase()} · nothing is sent to Stripe. Key{" "}
+            {maskPublishableKey(config.publishableKey)}. A live key is refused.
           </Text>
           <View style={styles.card}>
             <Text style={styles.cardBrand}>Visa</Text>
             <Text style={styles.cardNumber}>•••• 4242</Text>
-            <Text style={styles.cardMeta}>Placeholder · not a real card</Text>
+            <Text style={styles.cardMeta}>Placeholder card. Not charged.</Text>
           </View>
-          <Pressable accessibilityRole="button" onPress={() => void confirm()} style={styles.pay}>
-            <Text style={styles.payLabel}>Confirm test payment</Text>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy }}
+            disabled={busy}
+            onPress={() => void confirm()}
+            style={[styles.pay, busy && styles.disabled]}
+          >
+            <Text style={styles.payLabel}>{busy ? "Confirming…" : "Confirm test payment"}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -72,7 +95,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mist,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     gap: 12,
   },
   kicker: { color: colors.teal, fontSize: 13, fontWeight: "700" },
@@ -87,6 +111,7 @@ const styles = StyleSheet.create({
   cardBrand: { color: colors.ink, fontSize: 13, fontWeight: "700" },
   cardNumber: { color: colors.ink, fontSize: 22, fontWeight: "600", letterSpacing: 1 },
   cardMeta: { color: colors.sage, fontSize: 13 },
+  error: { color: colors.ink, fontSize: 14, lineHeight: 20 },
   pay: {
     minHeight: 52,
     borderRadius: 16,
@@ -94,6 +119,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  disabled: { opacity: 0.45 },
   payLabel: { color: colors.ink, fontSize: 17, fontWeight: "700" },
   cancel: { minHeight: 44, alignItems: "center", justifyContent: "center" },
   cancelLabel: { color: colors.ink, fontSize: 16, fontWeight: "600" },

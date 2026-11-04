@@ -34,7 +34,10 @@ export type Neighbourhood = {
   wave: "launch" | "next" | "later";
 };
 
-/** Every province and territory. Only Ontario has a soft-launch city today. */
+/** Toronto is the only bookable city. Ontario carries the soft-launch status because of it. */
+export const SOFT_LAUNCH_CITY_ID = "toronto";
+
+/** Every province and territory, so a later Canada-wide open does not need a new model. */
 export const PROVINCES: readonly Province[] = [
   { code: "AB", name: "Alberta", status: "planned" },
   { code: "BC", name: "British Columbia", status: "planned" },
@@ -83,16 +86,40 @@ export const NEIGHBOURHOODS: readonly Neighbourhood[] = [
   { cityId: "toronto", name: "North York Centre", wave: "next" },
 ];
 
+export function coverageStatusLabel(status: CoverageStatus): string {
+  return status === "soft-launch" ? "Soft launch" : "Planned";
+}
+
+export function cityStatusLabel(status: CoverageStatus): string {
+  return status === "soft-launch" ? "Open" : "Coming soon";
+}
+
 export function bookableCities(): City[] {
   return CITIES.filter((city) => city.status === "soft-launch");
+}
+
+export function defaultBookableCity(): City {
+  const city = CITIES.find((item) => item.id === SOFT_LAUNCH_CITY_ID && item.status === "soft-launch");
+  if (!city) throw new Error("Toronto soft launch is missing from the coverage model");
+  return city;
 }
 
 export function citiesInProvince(code: ProvinceCode): City[] {
   return CITIES.filter((city) => city.province === code);
 }
 
-export function launchNeighbourhoods(cityId = "toronto"): Neighbourhood[] {
+export function provinceCoverage(): { province: Province; cities: City[] }[] {
+  return [...PROVINCES]
+    .sort((a, b) => a.name.localeCompare(b.name, "en-CA"))
+    .map((province) => ({ province, cities: citiesInProvince(province.code) }));
+}
+
+export function launchNeighbourhoods(cityId = SOFT_LAUNCH_CITY_ID): Neighbourhood[] {
   return NEIGHBOURHOODS.filter((item) => item.cityId === cityId && item.wave === "launch");
+}
+
+export function laterNeighbourhoods(cityId = SOFT_LAUNCH_CITY_ID): Neighbourhood[] {
+  return NEIGHBOURHOODS.filter((item) => item.cityId === cityId && item.wave !== "launch");
 }
 
 export function isBookableCity(cityId: string): boolean {
