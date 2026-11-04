@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { quoteHome } from "@/lib/pricing";
+import { DEFAULT_QUOTE_INPUT, quoteHome } from "@/lib/pricing";
 import { normalizeReferralCode, REFERRAL_STORAGE_KEY } from "@/lib/referral";
 import { CleanerPitch } from "./CleanerPitch";
 import { Closer } from "./Closer";
 import { Hero } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
 import { Pillars } from "./Pillars";
-import { DEFAULT_QUOTE_INPUT, QuoteCalculator, type QuoteSnapshot } from "./QuoteCalculator";
+import { QuoteCalculator, type QuoteSnapshot } from "./QuoteCalculator";
 import { CleanerWaitlist, CustomerWaitlist } from "./Waitlist";
 
 type Path = "customer" | "cleaner";

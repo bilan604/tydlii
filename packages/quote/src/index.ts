@@ -1,14 +1,14 @@
 /**
- * Quote math copied from the website `lib/pricing.ts` so Metro stays inside this app.
- * Keep the two copies in step if the bands change.
- *
  * Instant quote math from the Tydlii landing brief, extended through 20,000 sq ft.
+ *
+ * This package is the only quote table. The website (`lib/pricing.ts`) and both
+ * Expo apps import it. Customer-facing labels match the live tydlii.com quote form.
  *
  * Bands A–C keep the published bases: 165, 189, 209.
  * From band D up, base = 139 + $0.10 × the band floor. That line is the brief for
  * D–G (239, 269, 299, 339) and the same formula prices every larger band.
  * +20 per bedroom after the first, +30 per full bath after the first, +15 per half bath
- * Frequency: weekly 0.91, biweekly 1.0, every 4 weeks 1.1, one-time 1.22
+ * Frequency: weekly 0.91, bi-weekly 1.0, every 4 weeks 1.1, one-time 1.22
  * Lived-in ×1.1
  * Overdue first visit = one-time × 1.4 (a reset). Otherwise the first visit is the one-time rate.
  * Round the charged pre-tax amount to the nearest price ending in 9 (`to9`).
@@ -16,9 +16,17 @@
  *
  * Sq ft cut points label those bases. They are the public bands. A null base would
  * be a custom quote; every published band has a price.
+ *
+ * The form offers beds 1–5, full baths 1–4, and half baths 0–2. `quoteHome` still
+ * clamps a wider range so a studio, or a stored quote outside the form, cannot go
+ * negative. Those wider clamps are not shown on tydlii.com or in the apps.
  */
 
 export const HST_RATE = 0.13;
+
+/** Day-one cleaner share of the pre-tax visit price. Growth copy uses the cap; it is not a second price. */
+export const CLEANER_SHARE_PERCENT = 67;
+export const CLEANER_SHARE_GROWTH_PERCENT = 72;
 
 export const SQFT_BANDS = [
   { id: "A", label: "Under 600 sq ft", base: 165 },
@@ -49,7 +57,7 @@ export type BandId = (typeof SQFT_BANDS)[number]["id"];
 
 export const FREQUENCIES = [
   { id: "weekly", label: "Weekly", multiplier: 0.91, hint: "Same weekday" },
-  { id: "biweekly", label: "Every 2 weeks", multiplier: 1, hint: "Most homes" },
+  { id: "biweekly", label: "Bi-weekly", multiplier: 1, hint: "Most homes" },
   { id: "every4", label: "Every 4 weeks", multiplier: 1.1, hint: "A lighter rhythm" },
   { id: "onetime", label: "One-time", multiplier: 1.22, hint: "A single visit" },
 ] as const;
@@ -64,17 +72,40 @@ export const CONDITIONS = [
   },
   {
     id: "livedin",
-    label: "Lived-in",
+    label: "Lived-in (pets, kids, 4+ wks)",
     hint: "Everyday mess. Priced at 1.1×.",
   },
   {
     id: "overdue",
-    label: "Overdue",
+    label: "Overdue (needs a reset)",
     hint: "The first visit is a reset clean: one-time rate × 1.4.",
   },
 ] as const;
 
 export type Condition = (typeof CONDITIONS)[number]["id"];
+
+/** Choices on the live quote form. Both the site and the customer app render these. */
+export const BEDROOM_OPTIONS = [1, 2, 3, 4, 5] as const;
+export const FULL_BATH_OPTIONS = [1, 2, 3, 4] as const;
+export const HALF_BATH_OPTIONS = [0, 1, 2] as const;
+
+export const QUOTE_FIELDS = {
+  bedrooms: "Bedrooms (den counts as one)",
+  fullBaths: "Full bathrooms",
+  halfBaths: "Half bathrooms",
+  band: "Home size",
+  frequency: "How often",
+  condition: "Condition today",
+} as const;
+
+export const DEFAULT_QUOTE_INPUT: QuoteInput = {
+  band: "C",
+  bedrooms: 2,
+  fullBaths: 1,
+  halfBaths: 0,
+  frequency: "biweekly",
+  condition: "standard",
+};
 
 export type QuoteInput = {
   band: BandId;
@@ -125,6 +156,30 @@ export type Quote =
       first: Money;
     };
 
+export type PricedQuote = Extract<Quote, { custom: false }>;
+
+export type FirstVisitNote = {
+  kind: "deeper" | "reset";
+  beforeHst: number;
+  withHst: number;
+};
+
+export type QuotePresentation =
+  | {
+      custom: true;
+      label: string;
+    }
+  | {
+      custom: false;
+      quote: PricedQuote;
+      /** Landing panel eyebrow, for example "Bi-weekly · per visit". */
+      eyebrow: string;
+      /** Plan price for a recurring clean. One-time and reset-only visits use the first visit. */
+      headline: Money;
+      /** Set on a recurring plan. Null for a one-time booking. */
+      firstVisit: FirstVisitNote | null;
+    };
+
 /**
  * Round to the nearest dollar amount ending in 9 (149, 159, 169…).
  * A value exactly halfway between two such amounts rounds toward +∞.
@@ -135,6 +190,14 @@ export function to9(amount: number): number {
 
 export function withHst(beforeTax: number): number {
   return Math.round(beforeTax * (1 + HST_RATE) * 100) / 100;
+}
+
+/**
+ * Dollar share of a pre-tax visit. Uses integer percent rounding so 67% of $229
+ * is $153.43, the figure on the landing cleaner pitch.
+ */
+export function cleanerShareAmount(beforeHst: number, percent = CLEANER_SHARE_PERCENT): number {
+  return Math.round(beforeHst * percent) / 100;
 }
 
 function money(beforeTax: number): Money {
@@ -225,4 +288,49 @@ export function fromPrice(): Money {
     throw new Error("Expected a weekly plan price");
   }
   return quote.plan;
+}
+
+/**
+ * What tydlii.com shows in the quote panel for these inputs.
+ * A recurring plan headlines the plan price. A one-time visit headlines the first visit.
+ */
+export function quotePresentation(input: QuoteInput): QuotePresentation {
+  const quote = quoteHome(input);
+  if (quote.custom) return { custom: true, label: quote.label };
+
+  const recurring = input.frequency !== "onetime" && quote.plan != null;
+  const headline = recurring && quote.plan ? quote.plan : quote.first;
+  const eyebrow = recurring
+    ? `${quote.frequencyLabel} · per visit`
+    : quote.firstKind === "reset"
+      ? "One-time reset clean"
+      : "One-time clean";
+  const firstVisit: FirstVisitNote | null = recurring
+    ? {
+        kind: quote.firstKind === "reset" ? "reset" : "deeper",
+        beforeHst: quote.first.beforeHst,
+        withHst: quote.first.withHst,
+      }
+    : null;
+
+  return { custom: false, quote, eyebrow, headline, firstVisit };
+}
+
+/** Sentence under the plan price on the landing quote panel. */
+export function firstVisitSentence(kind: FirstVisitNote["kind"], beforeHstLabel: string): string {
+  const lead =
+    kind === "reset" ? "First visit is a deep Reset clean: " : "First visit is a deeper clean: ";
+  return `${lead}${beforeHstLabel} + HST. Your plan price starts from visit two.`;
+}
+
+/** Liberty Village preview the landing and the cleaner sample offer both show. */
+export function landingPreviewShare(): { visitBeforeHst: number; share: number } {
+  const quote = quoteHome(DEFAULT_QUOTE_INPUT);
+  if (quote.custom || !quote.plan) {
+    throw new Error("Default quote is missing a plan price");
+  }
+  return {
+    visitBeforeHst: quote.plan.beforeHst,
+    share: cleanerShareAmount(quote.plan.beforeHst),
+  };
 }

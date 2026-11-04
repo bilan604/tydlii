@@ -19,6 +19,7 @@ const documentNoStore = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  transpilePackages: ["@tydlii/quote"],
   async headers() {
     return [
       {

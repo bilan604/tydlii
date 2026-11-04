@@ -3,24 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { cad } from "@/lib/format";
 import {
+  BEDROOM_OPTIONS,
+  CONDITIONS,
+  DEFAULT_QUOTE_INPUT,
+  FREQUENCIES,
+  FULL_BATH_OPTIONS,
+  HALF_BATH_OPTIONS,
+  QUOTE_FIELDS,
   SQFT_BANDS,
-  quoteHome,
+  firstVisitSentence,
+  quotePresentation,
   type BandId,
   type Condition,
   type Frequency,
   type Quote,
-  type QuoteInput,
 } from "@/lib/pricing";
 import { Check, SectionIntro } from "./ui";
 
-export const DEFAULT_QUOTE_INPUT: QuoteInput = {
-  band: "C",
-  bedrooms: 2,
-  fullBaths: 1,
-  halfBaths: 0,
-  frequency: "biweekly",
-  condition: "standard",
-};
+export { DEFAULT_QUOTE_INPUT };
 
 export type QuoteSnapshot = {
   quote: Quote;
@@ -28,26 +28,6 @@ export type QuoteSnapshot = {
   fullBaths: number;
   halfBaths: number;
   frequency: Frequency;
-};
-
-const FREQUENCIES: { id: Frequency; label: string }[] = [
-  { id: "weekly", label: "Weekly" },
-  { id: "biweekly", label: "Bi-weekly" },
-  { id: "every4", label: "Every 4 weeks" },
-  { id: "onetime", label: "One-time" },
-];
-
-const CONDITIONS: { id: Condition; label: string }[] = [
-  { id: "standard", label: "Maintained" },
-  { id: "livedin", label: "Lived-in (pets, kids, 4+ wks)" },
-  { id: "overdue", label: "Overdue (needs a reset)" },
-];
-
-const FREQ_LABEL: Record<Frequency, string> = {
-  weekly: "Weekly",
-  biweekly: "Bi-weekly",
-  every4: "Every 4 weeks",
-  onetime: "One-time",
 };
 
 export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapshot) => void }) {
@@ -58,23 +38,24 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
   const [frequency, setFrequency] = useState<Frequency>(DEFAULT_QUOTE_INPUT.frequency);
   const [condition, setCondition] = useState<Condition>(DEFAULT_QUOTE_INPUT.condition);
 
-  const quote = useMemo(
-    () => quoteHome({ band, bedrooms, fullBaths, halfBaths, frequency, condition }),
+  const presented = useMemo(
+    () => quotePresentation({ band, bedrooms, fullBaths, halfBaths, frequency, condition }),
     [band, bedrooms, fullBaths, halfBaths, frequency, condition],
   );
+  const quote = presented.custom ? null : presented.quote;
 
   useEffect(() => {
-    onChange({ quote, bedrooms, fullBaths, halfBaths, frequency });
-  }, [onChange, quote, bedrooms, fullBaths, halfBaths, frequency]);
+    onChange({
+      quote: presented.custom ? { custom: true, band, label: presented.label } : presented.quote,
+      bedrooms,
+      fullBaths,
+      halfBaths,
+      frequency,
+    });
+  }, [onChange, presented, band, bedrooms, fullBaths, halfBaths, frequency]);
 
-  const headline = quote.custom ? null : frequency === "onetime" || !quote.plan ? quote.first : quote.plan;
-  const eyebrow = quote.custom
-    ? quote.label
-    : frequency === "onetime"
-      ? quote.firstKind === "reset"
-        ? "One-time reset clean"
-        : "One-time clean"
-      : `${FREQ_LABEL[frequency]} · per visit`;
+  const headline = presented.custom ? null : presented.headline;
+  const eyebrow = presented.custom ? presented.label : presented.eyebrow;
 
   return (
     <section className="block tight" id="price" aria-labelledby="quote-title">
@@ -89,9 +70,9 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
           <h3>Tell us about your home</h3>
           <div className="form-grid">
             <label className="field">
-              <span>Bedrooms (den counts as one)</span>
+              <span>{QUOTE_FIELDS.bedrooms}</span>
               <select value={bedrooms} onChange={(event) => setBedrooms(Number(event.target.value))}>
-                {[1, 2, 3, 4, 5].map((value) => (
+                {BEDROOM_OPTIONS.map((value) => (
                   <option key={value} value={value}>
                     {value}
                   </option>
@@ -99,9 +80,9 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
               </select>
             </label>
             <label className="field">
-              <span>Full bathrooms</span>
+              <span>{QUOTE_FIELDS.fullBaths}</span>
               <select value={fullBaths} onChange={(event) => setFullBaths(Number(event.target.value))}>
-                {[1, 2, 3, 4].map((value) => (
+                {FULL_BATH_OPTIONS.map((value) => (
                   <option key={value} value={value}>
                     {value}
                   </option>
@@ -109,9 +90,9 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
               </select>
             </label>
             <label className="field">
-              <span>Half bathrooms</span>
+              <span>{QUOTE_FIELDS.halfBaths}</span>
               <select value={halfBaths} onChange={(event) => setHalfBaths(Number(event.target.value))}>
-                {[0, 1, 2].map((value) => (
+                {HALF_BATH_OPTIONS.map((value) => (
                   <option key={value} value={value}>
                     {value}
                   </option>
@@ -119,7 +100,7 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
               </select>
             </label>
             <label className="field">
-              <span>Home size</span>
+              <span>{QUOTE_FIELDS.band}</span>
               <select value={band} onChange={(event) => setBand(event.target.value as BandId)}>
                 {SQFT_BANDS.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -129,7 +110,7 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
               </select>
             </label>
             <label className="field">
-              <span>How often</span>
+              <span>{QUOTE_FIELDS.frequency}</span>
               <select value={frequency} onChange={(event) => setFrequency(event.target.value as Frequency)}>
                 {FREQUENCIES.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -139,7 +120,7 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
               </select>
             </label>
             <label className="field">
-              <span>Condition today</span>
+              <span>{QUOTE_FIELDS.condition}</span>
               <select value={condition} onChange={(event) => setCondition(event.target.value as Condition)}>
                 {CONDITIONS.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -156,9 +137,9 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
             <polygon points="300,0 400,0 400,400 200,400" fill="var(--teal)" opacity="0.22" />
           </svg>
           <div className="panel-copy">
-            {quote.custom || !headline ? (
+            {presented.custom || !headline || !quote ? (
               <>
-                <p className="eyebrow on-dark">{quote.custom ? quote.label : "Custom"}</p>
+                <p className="eyebrow on-dark">{presented.custom ? presented.label : "Custom"}</p>
                 <h3 className="custom-title">A custom, guaranteed quote.</h3>
                 <p>
                   Larger homes get a fixed price from a short video walkthrough. Join the waitlist and
@@ -177,12 +158,9 @@ export function QuoteCalculator({ onChange }: { onChange: (snapshot: QuoteSnapsh
                 </div>
                 <p className="price-incl">{cad(headline.withHst, true)} including 13% HST</p>
                 <div className="rule" />
-                {frequency !== "onetime" ? (
+                {presented.firstVisit ? (
                   <Check onDark>
-                    {quote.firstKind === "reset"
-                      ? "First visit is a deep Reset clean: "
-                      : "First visit is a deeper clean: "}
-                    {cad(quote.first.beforeHst)} + HST. Your plan price starts from visit two.
+                    {firstVisitSentence(presented.firstVisit.kind, cad(presented.firstVisit.beforeHst))}
                   </Check>
                 ) : null}
                 <Check onDark>

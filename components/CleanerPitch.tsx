@@ -1,4 +1,8 @@
+import { cad } from "@/lib/format";
+import { CLEANER_SHARE_GROWTH_PERCENT, CLEANER_SHARE_PERCENT, landingPreviewShare } from "@/lib/pricing";
 import { SectionIntro } from "./ui";
+
+const previewShare = landingPreviewShare();
 
 const REASONS = [
   {
@@ -30,16 +34,17 @@ export function CleanerPitch() {
           </svg>
           <div className="earn-grid">
             <div className="earn-figure">
-              <p>Your share of a $229 clean</p>
-              <p className="earn-amount">$153.43</p>
+              <p>Your share of a {cad(previewShare.visitBeforeHst)} clean</p>
+              <p className="earn-amount">{cad(previewShare.share, true)}</p>
               <p>2-bedroom bi-weekly in Liberty Village · about 3.5 hours · plus 100% of tips</p>
             </div>
             <div className="earn-copy">
               <p className="eyebrow on-dark">Clean with Tydlii</p>
               <h2>Keep more of every job. Get paid daily.</h2>
               <p>
-                A fixed 67% share of every job price, rising to 72% as you grow. See your earnings before you
-                accept. Regulars close together across downtown Toronto.
+                A fixed {CLEANER_SHARE_PERCENT}% share of every job price, rising to {CLEANER_SHARE_GROWTH_PERCENT}%
+                as you grow. See your earnings before you accept. Regulars close together across downtown
+                Toronto.
               </p>
               <div className="share">
                 <div className="share-track" aria-hidden="true">
@@ -47,8 +52,8 @@ export function CleanerPitch() {
                   <span className="share-grow" />
                 </div>
                 <div className="share-labels">
-                  <span>67% yours from day one</span>
-                  <span>up to 72%</span>
+                  <span>{CLEANER_SHARE_PERCENT}% yours from day one</span>
+                  <span>up to {CLEANER_SHARE_GROWTH_PERCENT}%</span>
                 </div>
               </div>
             </div>

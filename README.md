@@ -190,7 +190,7 @@ curl -s -X POST http://localhost:3000/api/waitlist \
 
 ## Quote math
 
-Implemented in `lib/pricing.ts` and covered by `lib/pricing.test.ts`.
+The only price table is [`packages/quote`](packages/quote) (`@tydlii/quote`). The site re-exports it from `lib/pricing.ts`. Both Expo apps import the same package. `lib/pricing.test.ts` covers HST and the price rules. `lib/quote-parity.test.ts` and `lib/mobile-pricing-sync.test.ts` check that the landing, the customer app, and the cleaner sample use that table for the same inputs.
 
 | Band | Home size | Base |
 | --- | --- | --- |
@@ -222,7 +222,7 @@ Bands A–C are the published small-home prices. From 1,000 sq ft up, the base i
 - +$20 per bedroom after the first (a studio adds nothing and does not subtract)
 - +$30 per full bath after the first
 - +$15 per half bath
-- Weekly ×0.91, every 2 weeks ×1, every 4 weeks ×1.1, one-time ×1.22
+- Weekly ×0.91, bi-weekly ×1, every 4 weeks ×1.1, one-time ×1.22. The quote form label is "Bi-weekly".
 - Lived-in ×1.1
 - Overdue first visit = one-time × 1.4 (a reset). Any other first visit is the one-time rate.
 - `to9` rounds the pre-tax charge to the nearest amount ending in 9
@@ -287,7 +287,7 @@ If the DNS record is proxied (orange cloud):
 - `apps/mobile/` — Expo customer and cleaner apps (sample data, separate installs)
 - `public/email/` — welcome hero (woman and dog) and the email wordmark
 - `components/` — Option A landing: hero, five pillars, quote, how it works, and the two waitlists
-- `lib/pricing.ts` — quote math
+- `packages/quote` — shared quote options, prices, HST, and cleaner share. `lib/pricing.ts` re-exports it for the site.
 - `public/brand/` — smile wordmark (navy and white) and the house icon
 - `public/og-option-a.png` — share image (ink, teal, blue). `og:image` / `twitter:image` use `https://tydlii.com/og-option-a.png?v=option-a-20261025` so link previews do not reuse the old navy file. `public/og.png` is the same art.
 - `public/favicon.ico` and `app/icon.png` — from the white-house icon

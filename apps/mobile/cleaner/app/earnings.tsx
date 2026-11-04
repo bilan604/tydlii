@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Card, Screen } from "@/components/ui";
+import { CLEANER_SHARE_GROWTH_PERCENT, CLEANER_SHARE_PERCENT } from "@tydlii/quote";
 import { cad } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { colors } from "@/theme";
@@ -30,8 +31,9 @@ export default function EarningsScreen() {
         ))}
 
         <Text style={styles.body}>
-          67% of the visit price from day one, up to 72%. Tips would be 100% yours. Late-arrival credits stay with
-          Tydlii. This ledger is a sample, and nothing is paid out.
+          {CLEANER_SHARE_PERCENT}% of the visit price from day one, up to {CLEANER_SHARE_GROWTH_PERCENT}%. Tips
+          would be 100% yours. Late-arrival credits stay with Tydlii. This ledger is a sample, and nothing is
+          paid out.
         </Text>
       </View>
     </Screen>

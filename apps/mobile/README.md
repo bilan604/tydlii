@@ -24,7 +24,7 @@ Keep both apps. A customer and a cleaner stay separate listings. The same person
 
 The smile wordmark is copied from `public/brand/wordmark.png` (ink) and `public/brand/wordmark-light.png` (on ink). The app icon is `public/brand/app-icon.png`. Replace those files in each app's `assets/` if the master artwork changes.
 
-Quote math in each app's `lib/pricing.ts` is a copy of the website `lib/pricing.ts`. A Liberty Village 2-bedroom, 800–999 sq ft, every 2 weeks, maintained, is **$229 + HST** per plan visit. The cleaner sample offer pays **67%** of that, **$153.43**.
+Quote options and prices come from `packages/quote` (`@tydlii/quote`), the same package the website uses. A Liberty Village 2-bedroom, 800–999 sq ft, bi-weekly, maintained, is **$229 + HST** per plan visit ($258.77 with HST). The first visit is **$279 + HST**. The cleaner sample offer pays **67%** of the $229 plan price, **$153.43**.
 
 ## Customer
 

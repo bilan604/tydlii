@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_DRAFT, upcomingDays, windowLabel, type Draft } from "@/lib/draft";
+import { DEFAULT_QUOTE_INPUT } from "@tydlii/quote";
 import { presentQuote } from "@/lib/present";
 
 export type JobStatus = "enroute" | "cleaning" | "done";
@@ -59,14 +60,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     }
 
     function previewSample() {
-      const presented = presentQuote({
-        band: "C",
-        bedrooms: 2,
-        fullBaths: 1,
-        halfBaths: 0,
-        frequency: "biweekly",
-        condition: "standard",
-      });
+      const presented = presentQuote(DEFAULT_QUOTE_INPUT);
       if (presented.custom || !presented.quote.plan) return;
       setVisit({
         addressLine: "88 Niagara Street, 1204",

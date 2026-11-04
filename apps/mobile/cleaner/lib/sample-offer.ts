@@ -1,13 +1,6 @@
-import { quoteHome } from "@/lib/pricing";
+import { CLEANER_SHARE_PERCENT, DEFAULT_QUOTE_INPUT, cleanerShareAmount, quoteHome } from "@tydlii/quote";
 
-const quote = quoteHome({
-  band: "C",
-  bedrooms: 2,
-  fullBaths: 1,
-  halfBaths: 0,
-  frequency: "biweekly",
-  condition: "standard",
-});
+const quote = quoteHome(DEFAULT_QUOTE_INPUT);
 
 if (quote.custom || !quote.plan) {
   throw new Error("Sample offer is missing a plan price");
@@ -23,6 +16,6 @@ export const SAMPLE_OFFER = {
   when: "Today · 9:00–11:00",
   hours: "about 3.5 hours",
   price,
-  earn: Math.round(price * 67) / 100,
-  share: "67%",
+  earn: cleanerShareAmount(price),
+  share: `${CLEANER_SHARE_PERCENT}%`,
 };
