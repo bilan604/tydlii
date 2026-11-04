@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BrandMark } from "@/components/BrandMark";
 import { Button, Card, Screen } from "@/components/ui";
 import { cad } from "@/lib/format";
@@ -56,7 +56,15 @@ export default function HomeScreen() {
               }}
             />
           )}
-          <Text style={styles.fine}>Sample data only. Payment and the map are previews.</Text>
+          <Text style={styles.fine}>Sample data only. The live map simulates GPS. Payment is a preview.</Text>
+          <View style={styles.legalRow}>
+            <Pressable accessibilityRole="link" onPress={() => router.push("/privacy")}>
+              <Text style={styles.legal}>Privacy</Text>
+            </Pressable>
+            <Pressable accessibilityRole="link" onPress={() => router.push("/terms")}>
+              <Text style={styles.legal}>Terms</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Screen>
@@ -98,4 +106,6 @@ const styles = StyleSheet.create({
   cardTax: { color: colors.ink, fontSize: 16, fontWeight: "600" },
   actions: { gap: 10 },
   fine: { color: colors.mist, fontSize: 13, lineHeight: 18, textAlign: "center" },
+  legalRow: { flexDirection: "row", justifyContent: "center", gap: 20 },
+  legal: { color: colors.mist, fontSize: 14, fontWeight: "600", textDecorationLine: "underline" },
 });

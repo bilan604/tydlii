@@ -10,10 +10,15 @@
     "backgroundColor": "#070707",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tydlii.cleaner"
+      "bundleIdentifier": "com.tydlii.cleaner",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Tydlii uses your location only during an active job so the customer can follow the visit. Tracking stops when the job is done."
+      }
     },
     "android": {
       "package": "com.tydlii.cleaner",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"],
       "adaptiveIcon": {
         "backgroundColor": "#070707",
         "foregroundImage": "./assets/images/icon.png"
