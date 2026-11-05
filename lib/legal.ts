@@ -1,8 +1,11 @@
 /** The only inbox for privacy, deletion, and support. Not the Resend From address. */
 export const LEGAL_EMAIL = "teamtydlii@gmail.com";
 
-/** Shown on /privacy and /terms. */
+/** Shown on /privacy. Terms uses TERMS_UPDATED once that page moves ahead. */
 export const LEGAL_UPDATED = "4 November 2026";
+
+/** Shown on /terms. Privacy keeps LEGAL_UPDATED. */
+export const TERMS_UPDATED = "5 November 2026";
 
 export const PRIVACY_PATH = "/privacy";
 export const TERMS_PATH = "/terms";
