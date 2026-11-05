@@ -9,6 +9,11 @@ import { STRIPE_PUBLISHABLE_KEY_ENV, STRIPE_TEST_KEY_PLACEHOLDER } from "./payme
 
 const mobileRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
+const EAS_PROJECT_IDS = {
+  customer: "ed30d1f1-b1a8-479f-8309-a8ebd04a4cbe",
+  cleaner: "26014761-9e69-40e9-bc62-f71e1aa8e5fe",
+} as const;
+
 function readJson(relativePath: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(mobileRoot, relativePath), "utf8")) as Record<string, unknown>;
 }
@@ -79,6 +84,7 @@ describe("store sketches", () => {
 
       const appJson = readJson(`${app}/app.json`) as {
         expo: {
+          slug?: string;
           owner?: string;
           extra?: { eas?: { projectId?: string } };
           ios: {
@@ -90,7 +96,8 @@ describe("store sketches", () => {
         };
       };
       assert.equal(appJson.expo.owner, "tydlii");
-      assert.equal(appJson.expo.extra?.eas?.projectId, undefined);
+      assert.equal(appJson.expo.slug, `tydlii-${app}`);
+      assert.equal(appJson.expo.extra?.eas?.projectId, EAS_PROJECT_IDS[app]);
       assert.equal(appJson.expo.ios.bundleIdentifier, `com.tydlii.${app}`);
       assert.equal(appJson.expo.android.package, `com.tydlii.${app}`);
       assert.equal(appJson.expo.ios.buildNumber, "1");
@@ -153,6 +160,23 @@ describe("expo project link", () => {
       {},
     );
     assert.equal(again.plugins?.filter((plugin) => plugin === "expo-apple-authentication").length, 1);
+  });
+
+  it("prefers EXPO_PUBLIC_EAS_PROJECT_ID and keeps the committed UUID otherwise", () => {
+    const override = "11111111-2222-4333-8444-555555555555";
+    for (const app of ["customer", "cleaner"] as const) {
+      const appJson = readJson(`${app}/app.json`) as { expo: Record<string, unknown> };
+      const kept = applyTydliiNativeConfig(appJson.expo, {});
+      assert.equal(kept.extra?.eas?.projectId, EAS_PROJECT_IDS[app]);
+      const invalidEnv = applyTydliiNativeConfig(appJson.expo, {
+        EXPO_PUBLIC_EAS_PROJECT_ID: "not-a-uuid",
+      });
+      assert.equal(invalidEnv.extra?.eas?.projectId, EAS_PROJECT_IDS[app]);
+      const replaced = applyTydliiNativeConfig(appJson.expo, {
+        EXPO_PUBLIC_EAS_PROJECT_ID: ` ${override} `,
+      });
+      assert.equal(replaced.extra?.eas?.projectId, override);
+    }
   });
 
   it("points both apps at the shared config and does not invent a project id", () => {
