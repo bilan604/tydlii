@@ -1,0 +1,37 @@
+export {
+  AuthError,
+  DELETE_ACCOUNT_URL,
+  MAGIC_CODE_TTL_MS,
+  NOTICE_STORAGE_KEY,
+  MAGIC_REPLAY_MS,
+  PASSWORD_MAX,
+  PASSWORD_MIN,
+  SECURE_STORE_VALUE_LIMIT,
+  VAULT_KEY,
+  assertPassword,
+  brand,
+  displayNameFromEmail,
+  isAuthError,
+  memoryStore,
+  normalizeEmail,
+  normalizeName,
+  persistenceLabel,
+  resolveAuthMode,
+  sameSecret,
+  sessionKey,
+  utf8Size,
+  withQuery,
+} from "./model";
+export type {
+  AppRole,
+  AuthErrorCode,
+  AuthMethod,
+  AuthMode,
+  CryptoPort,
+  DeletionReceipt,
+  KeyValueStore,
+  MagicCode,
+  Session,
+} from "./model";
+export { createAuthClient } from "./client";
+export type { AuthClient, PasswordInput, SignUpInput } from "./client";
