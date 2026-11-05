@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { MAPLIBRE_JS, OSM_TILE_URL } from "./live-map-html";
+import { applyTydliiNativeConfig } from "../../native-config.js";
 import { STRIPE_PUBLISHABLE_KEY_ENV, STRIPE_TEST_KEY_PLACEHOLDER } from "./payments";
 
 const mobileRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -105,5 +106,63 @@ describe("store sketches", () => {
 
     const cleaner = JSON.stringify(readJson("cleaner/eas.json"));
     assert.doesNotMatch(cleaner, /STRIPE|pk_test_|pk_live_/);
+  });
+});
+
+describe("expo project link", () => {
+  const base = {
+    scheme: "tydlii-customer",
+    owner: "tydlii",
+    ios: { bundleIdentifier: "com.tydlii.customer" },
+    plugins: ["expo-router"],
+  };
+
+  it("leaves the project id unset and enables Sign in with Apple", () => {
+    const next = applyTydliiNativeConfig(base, {});
+    assert.equal(next.extra, undefined);
+    assert.equal(next.ios?.usesAppleSignIn, true);
+    assert.equal(next.scheme, "tydlii-customer");
+    assert.equal(next.plugins?.filter((plugin) => plugin === "expo-apple-authentication").length, 1);
+  });
+
+  it("copies a real project UUID and the reversed Google scheme", () => {
+    const id = "11111111-2222-4333-8444-555555555555";
+    const next = applyTydliiNativeConfig(base, {
+      EXPO_PUBLIC_EAS_PROJECT_ID: ` ${id} `,
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: "123456789012-abcdef.apps.googleusercontent.com",
+    });
+    assert.equal(next.extra?.eas?.projectId, id);
+    assert.deepEqual(next.scheme, ["tydlii-customer", "com.googleusercontent.apps.123456789012-abcdef"]);
+  });
+
+  it("drops a placeholder project id and ignores a placeholder client id", () => {
+    const next = applyTydliiNativeConfig(
+      { ...base, extra: { eas: { projectId: "eas-init-later" } } },
+      { EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: "your-client-id", EXPO_PUBLIC_EAS_PROJECT_ID: "not-a-uuid" },
+    );
+    assert.equal(next.extra?.eas?.projectId, undefined);
+    assert.equal(next.scheme, "tydlii-customer");
+  });
+
+  it("keeps a project id eas init already wrote", () => {
+    const id = "11111111-2222-4333-8444-555555555555";
+    const next = applyTydliiNativeConfig({ ...base, extra: { eas: { projectId: id } } }, {});
+    assert.equal(next.extra?.eas?.projectId, id);
+    const again = applyTydliiNativeConfig(
+      { ...base, plugins: ["expo-apple-authentication"] },
+      {},
+    );
+    assert.equal(again.plugins?.filter((plugin) => plugin === "expo-apple-authentication").length, 1);
+  });
+
+  it("points both apps at the shared config and does not invent a project id", () => {
+    for (const app of ["customer", "cleaner"]) {
+      const source = readFileSync(join(mobileRoot, `${app}/app.config.ts`), "utf8");
+      assert.match(source, /applyTydliiNativeConfig/);
+      assert.doesNotMatch(source, /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      const appJson = readJson(`${app}/app.json`) as { expo: { plugins: unknown[]; ios: { usesAppleSignIn?: boolean } } };
+      assert.equal(appJson.expo.ios.usesAppleSignIn, true);
+      assert.equal(appJson.expo.plugins.includes("expo-apple-authentication"), true);
+    }
   });
 });

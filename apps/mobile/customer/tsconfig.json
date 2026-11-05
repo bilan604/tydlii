@@ -15,8 +15,14 @@
       "@tydlii/quote": [
         "../../../packages/quote/src/index.ts"
       ],
+      "expo-apple-authentication": [
+        "./node_modules/expo-apple-authentication"
+      ],
       "expo-auth-session": [
         "./node_modules/expo-auth-session"
+      ],
+      "expo-constants": [
+        "./node_modules/expo-constants"
       ],
       "expo-crypto": [
         "./node_modules/expo-crypto"

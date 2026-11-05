@@ -14,10 +14,11 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { CONTACT_EMAIL, PRIVACY_URL, TERMS_URL, accountDeletionMailto } from "../../../shared/src/legal";
-import { DELETE_ACCOUNT_URL, isAuthError, persistenceLabel, withQuery, type AppRole, type MagicCode } from "../model";
+import { DELETE_ACCOUNT_URL, authMethodLabel, isAuthError, persistenceLabel, withQuery, type AppRole, type MagicCode } from "../model";
 import { localCallbackBase, promptHostedSignIn } from "./hosted-prompt";
 import { openLivePage } from "./open-live-page";
 import { useAuth } from "./provider";
+import { promptAppleSignIn, promptGoogleSignIn, type SocialPromptResult } from "./social-prompt";
 
 const ROLE_LABEL: Record<AppRole, string> = {
   customer: "Customer",
@@ -164,6 +165,106 @@ function QuietButton({ label, onPress }: { label: string; onPress: () => void })
   );
 }
 
+function useAppleButton(): typeof import("expo-apple-authentication") | null {
+  const [mod, setMod] = useState<typeof import("expo-apple-authentication") | null>(null);
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    let cancelled = false;
+    import("expo-apple-authentication")
+      .then(async (loaded) => {
+        if (cancelled) return;
+        if (await loaded.isAvailableAsync()) setMod(loaded);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return mod;
+}
+
+function SocialButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.social, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+    >
+      <Text style={styles.socialLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function SocialSignIn({
+  pending,
+  setPending,
+  setError,
+}: {
+  pending: boolean;
+  setPending: (value: boolean) => void;
+  setError: (value: string) => void;
+}) {
+  const auth = useAuth();
+  const appleButton = useAppleButton();
+
+  async function run(action: () => Promise<SocialPromptResult>) {
+    setPending(true);
+    setError("");
+    try {
+      const result = await action();
+      if (result.type === "success") await auth.signInWithIdentity(result.identity);
+      else setError(result.message);
+    } catch (cause) {
+      setError(messageFrom(cause));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function google() {
+    return run(() =>
+      promptGoogleSignIn({
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      }),
+    );
+  }
+
+  function apple() {
+    return run(() =>
+      promptAppleSignIn({
+        bundleId: auth.bundleId,
+        serviceId: process.env.EXPO_PUBLIC_APPLE_SERVICE_ID,
+        redirectUri: process.env.EXPO_PUBLIC_APPLE_REDIRECT_URI,
+      }),
+    );
+  }
+
+  const AppleNative = appleButton?.AppleAuthenticationButton;
+
+  return (
+    <View style={styles.socialGroup}>
+      <SocialButton label="Continue with Google" disabled={pending} onPress={() => void google()} />
+      {AppleNative && appleButton ? (
+        <AppleNative
+          buttonType={appleButton.AppleAuthenticationButtonType.CONTINUE}
+          buttonStyle={appleButton.AppleAuthenticationButtonStyle.WHITE}
+          cornerRadius={16}
+          style={styles.appleNative}
+          onPress={() => {
+            if (!pending) void apple();
+          }}
+        />
+      ) : (
+        <SocialButton label="Continue with Apple" disabled={pending} onPress={() => void apple()} />
+      )}
+    </View>
+  );
+}
+
 function TextButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.textButton}>
@@ -288,6 +389,8 @@ export function SignInScreen() {
         One email for Tydlii. The same address can open the {otherRole(auth.role)} app later.
       </Text>
       <Text style={styles.note}>Signing in does not use your location.</Text>
+      <SocialSignIn pending={pending} setPending={setPending} setError={setError} />
+      <Text style={styles.or}>or</Text>
 
       <View style={styles.card}>
         {issued ? (
@@ -365,7 +468,9 @@ export function SignInScreen() {
 
       <QuietButton label="Create an account" onPress={() => router.push("/sign-up")} />
       <LiveLegalLinks tone="ink" />
-      <Text style={styles.fine}>Local dev auth. No email is sent and no server is called.</Text>
+      <Text style={styles.fine}>
+        The session stays on this device. Google and Apple are asked only to confirm the sign-in. Nothing is emailed.
+      </Text>
     </InkFrame>
   );
 }
@@ -432,8 +537,10 @@ export function SignUpScreen() {
         Create an account
       </Text>
       <Text style={styles.lede}>
-        Use the email you want on both apps. This {auth.role} app saves it on this device only.
+        Use the email you want on both apps.         This {auth.role} app saves it on this device only.
       </Text>
+      <SocialSignIn pending={pending} setPending={setPending} setError={setError} />
+      <Text style={styles.or}>or</Text>
       <View style={styles.card}>
         <Field label="Name" value={name} onChangeText={setName} placeholder="Ada Lovelace" contentType="name" />
         <Field
@@ -512,7 +619,7 @@ export function AccountScreen() {
               <Text style={styles.cardTitle}>{session.displayName}</Text>
               <Text style={styles.cardBody}>{session.email}</Text>
               <Text style={styles.cardBody}>
-                {session.method === "password" ? "Email and password" : "Email code"}
+                {authMethodLabel(session.method)}
                 {" · "}
                 Roles on this record: {session.roles.join(", ")}
               </Text>
@@ -570,17 +677,24 @@ export function AccountScreen() {
 
 export function AuthCallbackScreen() {
   const auth = useAuth();
-  const params = useLocalSearchParams<{ email?: string | string[]; code?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    email?: string | string[];
+    code?: string | string[];
+    error?: string | string[];
+  }>();
   const email = firstParam(params.email);
   const code = firstParam(params.code);
+  const providerError = firstParam(params.error);
+  const magic = Boolean(email && /^\d{6}$/.test(code));
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (auth.status === "signed_in") router.replace("/");
+  }, [auth.status]);
+
+  useEffect(() => {
+    if (!magic) return;
     let cancelled = false;
-    if (!email || !code) {
-      setError("This link is missing an email or a code.");
-      return;
-    }
     auth
       .redeemMagicCode({ email, code })
       .then(() => {
@@ -593,17 +707,22 @@ export function AuthCallbackScreen() {
       cancelled = true;
     };
     // email and code only. Depending on auth would redeem again after the session updates.
-  }, [email, code]);
+  }, [magic, email, code]);
 
   return (
     <InkFrame>
       <Text accessibilityRole="header" style={styles.title}>
-        {error ? "Code not accepted" : "Checking the code"}
+        {error ? "Code not accepted" : magic ? "Checking the code" : "Finishing sign-in"}
       </Text>
       <Text style={styles.lede}>
-        {error || "This is the AuthSession return path. A hosted provider would land here too."}
+        {error ||
+          (providerError
+            ? "The provider did not complete sign-in. Go back and try again."
+            : magic
+              ? "This is the return path for an email code."
+              : "Google or Apple is returning to the app.")}
       </Text>
-      {error ? <QuietButton label="Back to sign in" onPress={() => router.replace("/sign-in")} /> : null}
+      {error || !magic ? <QuietButton label="Back to sign in" onPress={() => router.replace("/sign-in")} /> : null}
     </InkFrame>
   );
 }
@@ -645,6 +764,20 @@ const styles = StyleSheet.create({
   lede: { color: "#e5f3f4", fontSize: 17, lineHeight: 24 },
   note: { color: "#5c9396", fontSize: 15, lineHeight: 21 },
   fine: { color: "#e5f3f4", fontSize: 13, lineHeight: 18, textAlign: "center" },
+  or: { color: "#5c9396", fontSize: 15, lineHeight: 21, textAlign: "center" },
+  socialGroup: { gap: 10 },
+  social: {
+    minHeight: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    backgroundColor: "#ffffff",
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
+  },
+  socialLabel: { color: "#070707", fontSize: 17, fontWeight: "600" },
+  appleNative: { width: "100%", height: 52 },
   card: { backgroundColor: "#ffffff", borderRadius: 20, padding: 16, gap: 12 },
   cardTitle: { color: "#070707", fontSize: 20, fontWeight: "600", letterSpacing: -0.4 },
   cardBody: { color: "#070707", fontSize: 15, lineHeight: 21 },

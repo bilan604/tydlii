@@ -8,7 +8,9 @@
     "./react": "./src/react/index.ts"
   },
   "peerDependencies": {
+    "expo-apple-authentication": "*",
     "expo-auth-session": "*",
+    "expo-constants": "*",
     "expo-crypto": "*",
     "expo-router": "*",
     "expo-secure-store": "*",

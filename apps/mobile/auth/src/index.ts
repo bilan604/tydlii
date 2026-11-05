@@ -9,6 +9,7 @@ export {
   SECURE_STORE_VALUE_LIMIT,
   VAULT_KEY,
   assertPassword,
+  authMethodLabel,
   brand,
   displayNameFromEmail,
   isAuthError,
@@ -27,6 +28,8 @@ export type {
   AuthErrorCode,
   AuthMethod,
   AuthMode,
+  AuthProviderName,
+  ProviderIdentity,
   CryptoPort,
   DeletionReceipt,
   KeyValueStore,
@@ -34,4 +37,4 @@ export type {
   Session,
 } from "./model";
 export { createAuthClient } from "./client";
-export type { AuthClient, PasswordInput, SignUpInput } from "./client";
+export type { AuthClient, IdentityInput, PasswordInput, SignUpInput } from "./client";

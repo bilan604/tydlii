@@ -12,6 +12,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tydlii.customer",
+      "usesAppleSignIn": true,
       "buildNumber": "1",
       "config": {
         "usesNonExemptEncryption": false
@@ -33,6 +34,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       [
         "expo-notifications",
         {
