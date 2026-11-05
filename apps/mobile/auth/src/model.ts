@@ -1,6 +1,17 @@
 export type AppRole = "customer" | "cleaner";
 
-export type AuthMethod = "password" | "magic-link";
+export type AuthProviderName = "google" | "apple";
+
+export type AuthMethod = "password" | "magic-link" | AuthProviderName;
+
+/** Identity returned by Google or Apple after that provider confirms the sign-in. */
+export type ProviderIdentity = {
+  provider: AuthProviderName;
+  subject: string;
+  email: string | null;
+  emailVerified: boolean;
+  displayName: string | null;
+};
 
 export const brand = {
   ink: "#070707",
@@ -73,7 +84,10 @@ export type AuthErrorCode =
   | "not_confirmed"
   | "no_session"
   | "vault_too_large"
-  | "unavailable";
+  | "unavailable"
+  | "unverified_email"
+  | "missing_email"
+  | "invalid_identity";
 
 export class AuthError extends Error {
   readonly code: AuthErrorCode;
@@ -210,4 +224,17 @@ export function persistenceLabel(kind: "secure-store" | "web-local"): string {
     return "SecureStore on this phone. The session stays on the device.";
   }
   return "localStorage in this web preview. A phone build uses SecureStore.";
+}
+
+export function authMethodLabel(method: AuthMethod): string {
+  switch (method) {
+    case "password":
+      return "Email and password";
+    case "magic-link":
+      return "Email code";
+    case "google":
+      return "Google";
+    case "apple":
+      return "Apple";
+  }
 }

@@ -17,6 +17,15 @@ import {
   withQuery,
   type CryptoPort,
 } from "./model";
+import {
+  acceptAppleNativeCredential,
+  googleNativeRedirectUri,
+  identityFromAppleToken,
+  identityFromGoogleTokenInfo,
+  identityFromGoogleUserInfo,
+  planAppleAuth,
+  planGoogleAuth,
+} from "./social";
 
 function nodeCrypto(): CryptoPort {
   return {
@@ -285,6 +294,295 @@ test("magic redirect keeps the scheme and encodes the email", () => {
     withQuery("https://localhost:8081/auth/callback?from=app", { code: "123456" }),
     "https://localhost:8081/auth/callback?from=app&code=123456",
   );
+});
+
+const IOS_CLIENT = "123456789012-abcdef.apps.googleusercontent.com";
+const WEB_CLIENT = "123456789012-webclient.apps.googleusercontent.com";
+
+function jwt(payload: Record<string, unknown>): string {
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "none", typ: "JWT" })}.${encode(payload)}.sig`;
+}
+
+test("Google and Apple plans stay off until real client ids are set", () => {
+  const missingGoogle = planGoogleAuth({ platform: "ios" });
+  assert.equal(missingGoogle.ready, false);
+  if (!missingGoogle.ready) assert.match(missingGoogle.message, /EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID/);
+  assert.equal(planGoogleAuth({ platform: "android", androidClientId: "your-client-id" }).ready, false);
+  const google = planGoogleAuth({
+    platform: "ios",
+    iosClientId: ` ${IOS_CLIENT} `,
+    webClientId: WEB_CLIENT,
+  });
+  assert.equal(google.ready, true);
+  if (google.ready) {
+    assert.equal(google.clientId, IOS_CLIENT);
+    assert.deepEqual(google.audiences, [IOS_CLIENT, WEB_CLIENT]);
+  }
+  assert.equal(
+    googleNativeRedirectUri(IOS_CLIENT),
+    "com.googleusercontent.apps.123456789012-abcdef:/oauth2redirect",
+  );
+
+  const native = planAppleAuth({ platform: "ios", bundleId: "com.tydlii.customer" });
+  assert.equal(native.ready, true);
+  if (native.ready && native.mode === "native") {
+    assert.deepEqual(native.allowedAudiences, ["com.tydlii.customer", "host.exp.exponent"]);
+  }
+  const android = planAppleAuth({ platform: "android", bundleId: "com.tydlii.cleaner" });
+  assert.equal(android.ready, false);
+  if (!android.ready) {
+    assert.match(android.message, /EXPO_PUBLIC_APPLE_SERVICE_ID/);
+    assert.match(android.message, /EXPO_PUBLIC_APPLE_REDIRECT_URI/);
+    assert.match(android.message, /com\.tydlii\.cleaner/);
+  }
+  const browser = planAppleAuth({
+    platform: "web",
+    bundleId: "com.tydlii.customer",
+    serviceId: "com.tydlii.customer.signin",
+    redirectUri: "https://tydlii.com/auth/callback",
+  });
+  assert.equal(browser.ready, true);
+  assert.equal(
+    planAppleAuth({
+      platform: "android",
+      bundleId: "com.tydlii.customer",
+      serviceId: "com.tydlii.customer.signin",
+      redirectUri: "tydlii-customer://auth/callback",
+    }).ready,
+    false,
+  );
+  assert.equal(
+    planAppleAuth({
+      platform: "web",
+      bundleId: "com.tydlii.customer",
+      serviceId: "com.tydlii.customer.signin",
+      redirectUri: "http://localhost:8081/auth/callback",
+    }).ready,
+    true,
+  );
+});
+
+test("Google token info must match this app and a confirmed email", () => {
+  const now = 1_700_000_000_000;
+  const body = {
+    iss: "https://accounts.google.com",
+    aud: IOS_CLIENT,
+    sub: "1001",
+    email: "Ada@Example.com",
+    email_verified: "true",
+    name: "Ada Lovelace",
+    exp: String(Math.floor(now / 1000) + 300),
+    nonce: "nonce-1",
+  };
+  const ok = identityFromGoogleTokenInfo(body, { audiences: [IOS_CLIENT], nonce: { raw: "nonce-1" }, now });
+  assert.equal(ok.ok, true);
+  if (ok.ok) {
+    assert.equal(ok.identity.provider, "google");
+    assert.equal(ok.identity.email, "ada@example.com");
+    assert.equal(ok.identity.displayName, "Ada Lovelace");
+  }
+  assert.equal(
+    identityFromGoogleTokenInfo({ ...body, aud: WEB_CLIENT, azp: IOS_CLIENT }, { audiences: [IOS_CLIENT], now }).ok,
+    true,
+  );
+  assert.equal(identityFromGoogleTokenInfo({ ...body, aud: "other.apps.googleusercontent.com" }, { audiences: [IOS_CLIENT], now }).ok, false);
+  assert.equal(identityFromGoogleTokenInfo({ ...body, email_verified: false }, { audiences: [IOS_CLIENT], now }).ok, false);
+  assert.equal(identityFromGoogleTokenInfo({ ...body, exp: "1" }, { audiences: [IOS_CLIENT], now }).ok, false);
+  assert.equal(identityFromGoogleTokenInfo({ ...body, iss: "https://evil.example" }, { audiences: [IOS_CLIENT], now }).ok, false);
+  assert.equal(
+    identityFromGoogleTokenInfo(body, { audiences: [IOS_CLIENT], nonce: { raw: "other" }, now }).ok,
+    false,
+  );
+  const user = identityFromGoogleUserInfo({ sub: "1001", email: "ada@example.com", email_verified: true, name: "Ada" });
+  assert.equal(user.ok, true);
+  assert.equal(identityFromGoogleUserInfo({ sub: "1001", email: "ada@example.com", email_verified: false }).ok, false);
+});
+
+test("Apple's token must match the bundle id or the Services ID", () => {
+  const now = 1_700_000_000_000;
+  const exp = Math.floor(now / 1000) + 300;
+  const token = jwt({
+    iss: "https://appleid.apple.com",
+    aud: "com.tydlii.customer",
+    sub: "001234.abcdef.1234",
+    email: "ada@privaterelay.appleid.com",
+    email_verified: true,
+    exp,
+    nonce: "nonce-1",
+  });
+  const ok = identityFromAppleToken(token, {
+    allowedAudiences: ["com.tydlii.customer", "host.exp.exponent"],
+    nonce: { raw: "nonce-1", digest: "hashed" },
+    now,
+    fullName: "Ada Lovelace",
+    expectedSubject: "001234.abcdef.1234",
+  });
+  assert.equal(ok.ok, true);
+  if (ok.ok) {
+    assert.equal(ok.identity.provider, "apple");
+    assert.equal(ok.identity.email, "ada@privaterelay.appleid.com");
+    assert.equal(ok.identity.displayName, "Ada Lovelace");
+  }
+  const hashed = jwt({
+    iss: "https://appleid.apple.com",
+    aud: "com.tydlii.customer",
+    sub: "001234.abcdef.1234",
+    exp,
+    nonce: "hashed",
+  });
+  const fromHash = acceptAppleNativeCredential({
+    user: "001234.abcdef.1234",
+    email: "Ada@Example.com",
+    fullName: null,
+    identityToken: hashed,
+    allowedAudiences: ["com.tydlii.customer"],
+    nonce: { raw: "nonce-1", digest: "hashed" },
+    now,
+  });
+  assert.equal(fromHash.ok, true);
+  if (fromHash.ok) assert.equal(fromHash.identity.email, "ada@example.com");
+  assert.equal(
+    identityFromAppleToken(token, { allowedAudiences: ["com.tydlii.cleaner"], now }).ok,
+    false,
+  );
+  assert.equal(acceptAppleNativeCredential({
+    user: "001234.abcdef.1234",
+    email: null,
+    fullName: null,
+    identityToken: null,
+    allowedAudiences: ["com.tydlii.customer"],
+    nonce: { raw: "nonce-1" },
+    now,
+  }).ok, false);
+});
+
+test("Google and Apple sign-in reuse one local account and do not store the token", async () => {
+  const { store, auth } = client();
+  const session = await auth.signInWithIdentity({
+    provider: "google",
+    subject: "1001",
+    email: "Ada@Example.com",
+    emailVerified: true,
+    displayName: "Ada Lovelace",
+  });
+  assert.equal(session.method, "google");
+  assert.equal(session.email, "ada@example.com");
+  assert.equal(session.displayName, "Ada Lovelace");
+  const again = await auth.signInWithIdentity({
+    provider: "google",
+    subject: "1001",
+    email: "ada@example.com",
+    emailVerified: true,
+    displayName: null,
+  });
+  assert.equal(again.accountId, session.accountId);
+  const vault = store.dump()[VAULT_KEY] ?? "";
+  assert.equal(JSON.parse(vault).accounts.length, 1);
+  assert.equal(vault.includes("ya29.secret"), false);
+  assert.equal(vault.includes("id_token"), false);
+
+  const cleaner = createAuthClient({ store, crypto: nodeCrypto(), role: "cleaner" });
+  const cleanerSession = await cleaner.signInWithIdentity({
+    provider: "apple",
+    subject: "001234.abcdef.1234",
+    email: "ada@example.com",
+    emailVerified: true,
+    displayName: null,
+  });
+  assert.equal(cleanerSession.accountId, session.accountId);
+  assert.deepEqual(cleanerSession.roles, ["customer", "cleaner"]);
+  assert.equal(cleanerSession.method, "apple");
+
+  await assert.rejects(
+    () =>
+      auth.signInWithIdentity({
+        provider: "google",
+        subject: "1002",
+        email: "mina@example.com",
+        emailVerified: false,
+        displayName: "Mina",
+      }),
+    (error) => {
+      assert.ok(error instanceof AuthError);
+      assert.equal(error.code, "unverified_email");
+      return true;
+    },
+  );
+  await assert.rejects(
+    () =>
+      auth.signInWithIdentity({
+        provider: "apple",
+        subject: "001234.newuser.9999",
+        email: null,
+        emailVerified: false,
+        displayName: null,
+      }),
+    (error) => {
+      assert.ok(error instanceof AuthError);
+      assert.equal(error.code, "missing_email");
+      return true;
+    },
+  );
+  const returning = await cleaner.signInWithIdentity({
+    provider: "apple",
+    subject: "001234.abcdef.1234",
+    email: null,
+    emailVerified: false,
+    displayName: null,
+  });
+  assert.equal(returning.accountId, session.accountId);
+  assert.equal(JSON.parse(store.dump()[VAULT_KEY] ?? "{}").accounts.length, 1);
+});
+
+test("a provider sign-in links the email that already has a password", async () => {
+  const { store, auth } = client();
+  const created = await auth.signUp({ email: "ada@example.com", password: "password1", displayName: "Ada" });
+  const linked = await auth.signInWithIdentity({
+    provider: "google",
+    subject: "1001",
+    email: "ada@example.com",
+    emailVerified: true,
+    displayName: null,
+  });
+  assert.equal(linked.accountId, created.accountId);
+  assert.equal(linked.method, "google");
+  await auth.signOut();
+  const password = await auth.signInWithPassword({ email: "ada@example.com", password: "password1" });
+  assert.equal(password.accountId, created.accountId);
+  assert.equal(JSON.parse(store.dump()[VAULT_KEY] ?? "{}").accounts.length, 1);
+});
+
+test("an older vault without provider links still signs in", async () => {
+  const { store, auth } = client();
+  await auth.signUp({ email: "ada@example.com", password: "password1", displayName: "Ada" });
+  const saved = JSON.parse(store.dump()[VAULT_KEY] ?? "{}") as { accounts: Record<string, unknown>[] };
+  delete saved.accounts[0]?.identities;
+  await store.set(VAULT_KEY, JSON.stringify(saved));
+  const session = await auth.signInWithPassword({ email: "ada@example.com", password: "password1" });
+  assert.equal(session.email, "ada@example.com");
+});
+
+test("auth screens call Google and Apple instead of leaving the buttons unwired", async () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
+  const screens = await readFile(path.join(root, "react/screens.tsx"), "utf8");
+  assert.match(screens, /Continue with Google/);
+  assert.match(screens, /Continue with Apple/);
+  assert.match(screens, /promptGoogleSignIn/);
+  assert.match(screens, /promptAppleSignIn/);
+  assert.match(screens, /signInWithIdentity/);
+  const prompt = await readFile(path.join(root, "react/social-prompt.ts"), "utf8");
+  assert.match(prompt, /expo-auth-session/);
+  assert.match(prompt, /expo-apple-authentication/);
+  assert.match(prompt, /oauth2\.googleapis\.com\/tokeninfo/);
+  assert.match(prompt, /appleid\.apple\.com\/auth\/authorize/);
+  assert.doesNotMatch(prompt, /eas submit|pk_live_|BEGIN PRIVATE/);
+  const layouts = [
+    await readFile(path.resolve(root, "../../customer/app/_layout.tsx"), "utf8"),
+    await readFile(path.resolve(root, "../../cleaner/app/_layout.tsx"), "utf8"),
+  ];
+  assert.match(layouts[0] ?? "", /bundleId="com\.tydlii\.customer"/);
+  assert.match(layouts[1] ?? "", /bundleId="com\.tydlii\.cleaner"/);
 });
 
 test("auth source does not request location or call an account API", async () => {

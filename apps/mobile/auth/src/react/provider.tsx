@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
-import { createAuthClient, type AuthClient, type PasswordInput, type SignUpInput } from "../client";
+import { createAuthClient, type AuthClient, type IdentityInput, type PasswordInput, type SignUpInput } from "../client";
 import {
   NOTICE_STORAGE_KEY,
   resolveAuthMode,
@@ -20,6 +20,7 @@ type AuthContextValue = {
   session: Session | null;
   role: AppRole;
   scheme: string;
+  bundleId: string;
   mode: AuthMode;
   persistence: Persistence;
   notice: string | null;
@@ -27,6 +28,7 @@ type AuthContextValue = {
   wordmark: { light: ReactNode; ink: ReactNode };
   signUp: (input: SignUpInput) => Promise<void>;
   signInWithPassword: (input: PasswordInput) => Promise<void>;
+  signInWithIdentity: (input: IdentityInput) => Promise<void>;
   requestMagicCode: (email: string) => Promise<MagicCode>;
   redeemMagicCode: (input: { email: string; code: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -58,6 +60,7 @@ function writeStoredNotice(value: string | null): void {
 export function AuthProvider({
   role,
   scheme,
+  bundleId = `com.tydlii.${role}`,
   issuer,
   clientId,
   wordmark,
@@ -65,6 +68,7 @@ export function AuthProvider({
 }: {
   role: AppRole;
   scheme: string;
+  bundleId?: string;
   issuer?: string;
   clientId?: string;
   wordmark: { light: ReactNode; ink: ReactNode };
@@ -125,6 +129,7 @@ export function AuthProvider({
       session,
       role,
       scheme,
+      bundleId,
       mode,
       persistence,
       notice,
@@ -140,6 +145,12 @@ export function AuthProvider({
       },
       async signInWithPassword(input) {
         const next = await client().signInWithPassword(input);
+        publishNotice(null);
+        setSession(next);
+        setStatus("signed_in");
+      },
+      async signInWithIdentity(input) {
+        const next = await client().signInWithIdentity(input);
         publishNotice(null);
         setSession(next);
         setStatus("signed_in");
@@ -173,7 +184,7 @@ export function AuthProvider({
         return receipt;
       },
     };
-  }, [mode, notice, persistence, role, scheme, session, status, wordmark]);
+  }, [bundleId, mode, notice, persistence, role, scheme, session, status, wordmark]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

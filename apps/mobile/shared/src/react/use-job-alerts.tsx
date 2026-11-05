@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Platform, StyleSheet, Switch, Text, View } from "react-native";
@@ -7,6 +8,7 @@ import {
   planPushTokenRequest,
   pushSkipMessage,
   readPushAlert,
+  readPushProjectId,
   registerPushToken,
   type PushAlert,
   type PushPermission,
@@ -38,13 +40,26 @@ function platformOf(os: string): PushPlatform {
 const OFF_DETAIL = "Job status and arrival alerts are off.";
 
 /**
+ * Expo inlines EXPO_PUBLIC_EAS_PROJECT_ID only when that name is written out.
+ * eas init can also leave the same UUID at extra.eas.projectId. Either one is enough.
+ */
+function linkedProjectId(): string | undefined {
+  const fromEnv = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+  if (readPushProjectId(fromEnv)) return fromEnv;
+  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: unknown } } | undefined;
+  const fromConfig = typeof extra?.eas?.projectId === "string" ? extra.eas.projectId : undefined;
+  if (readPushProjectId(fromConfig)) return fromConfig;
+  return fromEnv ?? fromConfig;
+}
+
+/**
  * Permission and token registration for one install.
  * The switch starts off and does not prompt until the person turns it on.
  * Expo inlines `process.env.EXPO_PUBLIC_*` only when the name is written out literally.
  */
 export function PushAlertsProvider({ role, children }: { role: PushRole; children: ReactNode }) {
   const platform = platformOf(Platform.OS);
-  const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+  const projectId = linkedProjectId();
   const registerUrl = process.env.EXPO_PUBLIC_PUSH_REGISTER_URL;
   const available = platform !== "web";
   const client = useMemo<ExpoPushClient | null>(

@@ -15,6 +15,7 @@ export default function RootLayout() {
       <AuthProvider
         role="customer"
         scheme="tydlii-customer"
+        bundleId="com.tydlii.customer"
         issuer={process.env.EXPO_PUBLIC_AUTH_ISSUER}
         clientId={process.env.EXPO_PUBLIC_AUTH_CLIENT_ID}
         wordmark={{

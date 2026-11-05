@@ -85,7 +85,7 @@ export function pushSkipMessage(reason: PushSkipReason): string {
     case "permission_undetermined":
       return "Job status and arrival alerts are off.";
     case "no_project":
-      return "Not registered. Set EXPO_PUBLIC_EAS_PROJECT_ID to the Expo project UUID from eas init before a token is requested.";
+      return "Not registered. Link this app with eas init, or set EXPO_PUBLIC_EAS_PROJECT_ID to that project UUID, before a token is requested.";
   }
 }
 

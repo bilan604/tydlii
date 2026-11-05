@@ -14,10 +14,12 @@ import {
   utf8Size,
   type AppRole,
   type AuthMethod,
+  type AuthProviderName,
   type CryptoPort,
   type DeletionReceipt,
   type KeyValueStore,
   type MagicCode,
+  type ProviderIdentity,
   type Session,
 } from "./model";
 
@@ -32,15 +34,23 @@ export type PasswordInput = {
   password: string;
 };
 
+export type IdentityInput = ProviderIdentity;
+
 export type AuthClient = {
   loadSession(): Promise<Session | null>;
   signUp(input: SignUpInput): Promise<Session>;
   signInWithPassword(input: PasswordInput): Promise<Session>;
+  signInWithIdentity(input: IdentityInput): Promise<Session>;
   requestMagicCode(input: { email: string }): Promise<MagicCode>;
   redeemMagicCode(input: { email: string; code: string }): Promise<Session>;
   switchRole(next: AppRole): Promise<Session>;
   signOut(): Promise<void>;
   deleteAccount(input: { confirmed: boolean }): Promise<DeletionReceipt>;
+};
+
+type IdentityLink = {
+  provider: AuthProviderName;
+  subject: string;
 };
 
 type AccountRecord = {
@@ -49,9 +59,27 @@ type AccountRecord = {
   displayName: string;
   passwordSalt: string | null;
   passwordHash: string | null;
+  identities: IdentityLink[];
   roles: AppRole[];
   createdAt: string;
 };
+
+const SUBJECT = /^[A-Za-z0-9._-]{1,256}$/;
+
+function readIdentities(value: unknown): IdentityLink[] {
+  if (!Array.isArray(value)) return [];
+  const links: IdentityLink[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const provider = (item as { provider?: unknown }).provider;
+    const subject = (item as { subject?: unknown }).subject;
+    if ((provider !== "google" && provider !== "apple") || typeof subject !== "string") continue;
+    if (!SUBJECT.test(subject)) continue;
+    if (links.some((link) => link.provider === provider && link.subject === subject)) continue;
+    links.push({ provider, subject });
+  }
+  return links;
+}
 
 type ChallengeRecord = {
   email: string;
@@ -99,7 +127,14 @@ export function createAuthClient(options: {
       if (parsed.v !== 1 || !Array.isArray(parsed.accounts) || !Array.isArray(parsed.challenges)) {
         return emptyVault();
       }
-      return { v: 1, accounts: parsed.accounts, challenges: parsed.challenges };
+      return {
+        v: 1,
+        accounts: parsed.accounts.map((account) => ({
+          ...account,
+          identities: readIdentities(account.identities),
+        })),
+        challenges: parsed.challenges,
+      };
     } catch {
       return emptyVault();
     }
@@ -131,8 +166,16 @@ export function createAuthClient(options: {
   }
 
   function withRole(account: AccountRecord): AccountRecord {
-    if (account.roles.includes(role)) return account;
-    return { ...account, roles: [...account.roles, role] };
+    const identities = account.identities ?? [];
+    const next = identities === account.identities ? account : { ...account, identities };
+    if (next.roles.includes(role)) return next;
+    return { ...next, roles: [...next.roles, role] };
+  }
+
+  function findByIdentity(vault: Vault, provider: AuthProviderName, subject: string): AccountRecord | undefined {
+    return vault.accounts.find((item) =>
+      item.identities.some((link) => link.provider === provider && link.subject === subject),
+    );
   }
 
   async function hashPassword(password: string, salt: string): Promise<string> {
@@ -167,7 +210,14 @@ export function createAuthClient(options: {
       if (parsed.v !== 1 || (parsed.signedInAs !== "customer" && parsed.signedInAs !== "cleaner")) return null;
       if (typeof parsed.accountId !== "string" || typeof parsed.email !== "string") return null;
       if (typeof parsed.token !== "string" || typeof parsed.displayName !== "string") return null;
-      if (parsed.method !== "password" && parsed.method !== "magic-link") return null;
+      if (
+        parsed.method !== "password" &&
+        parsed.method !== "magic-link" &&
+        parsed.method !== "google" &&
+        parsed.method !== "apple"
+      ) {
+        return null;
+      }
       if (!Array.isArray(parsed.roles) || typeof parsed.issuedAt !== "string") return null;
       return parsed as Session;
     } catch {
@@ -236,6 +286,7 @@ export function createAuthClient(options: {
           displayName,
           passwordSalt: salt,
           passwordHash,
+          identities: [],
           roles: [role],
           createdAt: new Date(now()).toISOString(),
         };
@@ -256,6 +307,12 @@ export function createAuthClient(options: {
       );
     }
     if (!existing.passwordHash || !existing.passwordSalt) {
+      if (existing.identities.length > 0) {
+        throw new AuthError(
+          "needs_code",
+          "This email uses Google or Apple on this device. Continue with that provider.",
+        );
+      }
       throw new AuthError("needs_code", "This email uses a sign-in code on this device.");
     }
     const passwordHash = await hashPassword(input.password, existing.passwordSalt);
@@ -279,6 +336,7 @@ export function createAuthClient(options: {
         displayName: displayNameFromEmail(email),
         passwordSalt: null,
         passwordHash: null,
+        identities: [],
         roles: [role],
         createdAt: new Date(now()).toISOString(),
       };
@@ -344,6 +402,60 @@ export function createAuthClient(options: {
       },
       session,
     );
+    return session;
+  }
+
+  async function signInWithIdentity(input: IdentityInput): Promise<Session> {
+    if (input.provider !== "google" && input.provider !== "apple") {
+      throw new AuthError("invalid_identity", "Choose Google or Apple.");
+    }
+    const subject = input.subject.trim();
+    if (!SUBJECT.test(subject)) {
+      throw new AuthError("invalid_identity", "The provider did not return a usable account id.");
+    }
+    const email = input.email ? normalizeEmail(input.email) : null;
+    if (email && !input.emailVerified) {
+      throw new AuthError("unverified_email", "That provider has not confirmed this email.");
+    }
+    const displayName = input.displayName?.trim() ? normalizeName(input.displayName) : null;
+    const vault = await loadVault();
+    const linked = findByIdentity(vault, input.provider, subject);
+    if (linked && email && linked.email !== email) {
+      throw new AuthError("invalid_identity", "This provider is already linked to a different email on this device.");
+    }
+    let account = linked ?? (email ? findAccount(vault, email) : undefined);
+    if (!account && !email) {
+      throw new AuthError(
+        "missing_email",
+        "The provider did not share an email. Try again, or use email on this device.",
+      );
+    }
+    if (!account && email) {
+      account = {
+        id: `acc_${await crypto.random(16)}`,
+        email,
+        displayName: displayName ?? displayNameFromEmail(email),
+        passwordSalt: null,
+        passwordHash: null,
+        identities: [{ provider: input.provider, subject }],
+        roles: [role],
+        createdAt: new Date(now()).toISOString(),
+      };
+    } else if (account) {
+      const identities = account.identities.some((item) => item.provider === input.provider && item.subject === subject)
+        ? account.identities
+        : [...account.identities, { provider: input.provider, subject }];
+      const nextName =
+        displayName && (account.displayName === displayNameFromEmail(account.email) || account.displayName === "Tydlii")
+          ? displayName
+          : account.displayName;
+      account = withRole({ ...account, identities, displayName: nextName });
+    }
+    if (!account) {
+      throw new AuthError("missing_email", "The provider did not share an email. Try again, or use email on this device.");
+    }
+    const session = await buildSession(account, input.provider);
+    await commit(replaceAccount(vault, account), session);
     return session;
   }
 
@@ -421,6 +533,7 @@ export function createAuthClient(options: {
     loadSession,
     signUp,
     signInWithPassword,
+    signInWithIdentity,
     requestMagicCode,
     redeemMagicCode,
     switchRole,

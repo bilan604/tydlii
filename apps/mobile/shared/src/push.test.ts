@@ -241,6 +241,7 @@ describe("push scaffold files", () => {
 
     const hook = readFileSync(new URL("./react/use-job-alerts.tsx", import.meta.url), "utf8");
     assert.match(hook, /process\.env\.EXPO_PUBLIC_EAS_PROJECT_ID/);
+    assert.match(hook, /expoConfig\?\.extra/);
     assert.match(hook, /process\.env\.EXPO_PUBLIC_PUSH_REGISTER_URL/);
     const layoutCustomer = readFileSync(join(mobileRoot, "customer/app/_layout.tsx"), "utf8");
     const layoutCleaner = readFileSync(join(mobileRoot, "cleaner/app/_layout.tsx"), "utf8");
