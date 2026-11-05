@@ -21,6 +21,12 @@
       "expo-crypto": [
         "./node_modules/expo-crypto"
       ],
+      "expo-device": [
+        "./node_modules/expo-device"
+      ],
+      "expo-notifications": [
+        "./node_modules/expo-notifications"
+      ],
       "expo-router": [
         "./node_modules/expo-router"
       ],

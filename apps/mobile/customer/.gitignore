@@ -40,4 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+# Push and store credentials. EAS holds these. Do not commit them.
 credentials.json
+google-services.json
+GoogleService-Info.plist

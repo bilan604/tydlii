@@ -3,6 +3,7 @@ import { AuthGate, AuthProvider } from "@tydlii/auth/react";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BrandMark } from "@/components/BrandMark";
+import { PushAlertsProvider } from "../../shared/src/react/use-job-alerts";
 import { BookingProvider } from "@/lib/booking";
 import { colors } from "@/theme";
 
@@ -23,13 +24,15 @@ export default function RootLayout() {
       >
         <BookingProvider>
           <AuthGate>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.mist },
-                animation: "slide_from_right",
-              }}
-            />
+            <PushAlertsProvider role="customer">
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.mist },
+                  animation: "slide_from_right",
+                }}
+              />
+            </PushAlertsProvider>
           </AuthGate>
         </BookingProvider>
       </AuthProvider>
