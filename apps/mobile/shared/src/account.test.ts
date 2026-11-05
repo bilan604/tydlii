@@ -9,4 +9,5 @@ test("account deletion is a local stub until the API exists", () => {
   assert.equal(pending.status, "pending_api");
   assert.match(pending.message, /Not sent/);
   assert.match(pending.message, /cleaner/);
+  assert.match(pending.message, /teamtydlii@gmail.com/);
 });

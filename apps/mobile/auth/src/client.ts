@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from "../../shared/src/legal";
 import {
   AuthError,
   DELETE_ACCOUNT_URL,
@@ -68,7 +69,7 @@ type Vault = {
   challenges: ChallengeRecord[];
 };
 
-const DELETION_DETAIL = `Not sent. No account API was called. This device's copy of the account was removed. Deletion section: ${DELETE_ACCOUNT_URL}`;
+const DELETION_DETAIL = `Not sent. No account API was called. This device's copy of the account was removed, including customer and cleaner on this email. To ask Tydlii to delete records it holds, email ${CONTACT_EMAIL}. Deletion section: ${DELETE_ACCOUNT_URL}`;
 
 const VAULT_FULL =
   "This device's local account store is full. A server is required before more accounts can be saved here.";

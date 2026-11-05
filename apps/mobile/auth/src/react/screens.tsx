@@ -13,8 +13,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { CONTACT_EMAIL, PRIVACY_URL, TERMS_URL, accountDeletionMailto } from "../../../shared/src/legal";
 import { DELETE_ACCOUNT_URL, isAuthError, persistenceLabel, withQuery, type AppRole, type MagicCode } from "../model";
 import { localCallbackBase, promptHostedSignIn } from "./hosted-prompt";
+import { openLivePage } from "./open-live-page";
 import { useAuth } from "./provider";
 
 const ROLE_LABEL: Record<AppRole, string> = {
@@ -167,6 +169,20 @@ function TextButton({ label, onPress }: { label: string; onPress: () => void }) 
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.textButton}>
       <Text style={styles.textButtonLabel}>{label}</Text>
     </Pressable>
+  );
+}
+
+function LiveLegalLinks({ tone }: { tone: "ink" | "mist" }) {
+  const labelStyle = tone === "ink" ? styles.legalOnInk : styles.legalOnMist;
+  return (
+    <View style={styles.legalRow}>
+      <Pressable accessibilityRole="link" onPress={() => void openLivePage(PRIVACY_URL)} style={styles.legalHit}>
+        <Text style={labelStyle}>Privacy Policy</Text>
+      </Pressable>
+      <Pressable accessibilityRole="link" onPress={() => void openLivePage(TERMS_URL)} style={styles.legalHit}>
+        <Text style={labelStyle}>Terms of Service</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -348,6 +364,7 @@ export function SignInScreen() {
       ) : null}
 
       <QuietButton label="Create an account" onPress={() => router.push("/sign-up")} />
+      <LiveLegalLinks tone="ink" />
       <Text style={styles.fine}>Local dev auth. No email is sent and no server is called.</Text>
     </InkFrame>
   );
@@ -443,6 +460,7 @@ export function SignUpScreen() {
           onPress={() => void submit()}
         />
       </View>
+      <LiveLegalLinks tone="ink" />
       <QuietButton label="Already have an account? Sign in" onPress={() => router.replace("/sign-in")} />
     </InkFrame>
   );
@@ -505,18 +523,39 @@ export function AccountScreen() {
           )}
           <Text style={styles.inkBody}>
             The same email can hold customer and cleaner. This phone keeps a separate store per app until a server
-            exists. Deleting here does not call Tydlii.
+            exists. Deleting here removes both roles on this device and does not call Tydlii.
           </Text>
           <Text style={styles.inkBody}>This screen does not use your location.</Text>
+          <Text style={styles.inkBody}>
+            To ask Tydlii to delete records it holds, email {CONTACT_EMAIL}. The privacy policy describes that request.
+          </Text>
+          <MistButton kind="secondary" label="Privacy Policy" onPress={() => void openLivePage(PRIVACY_URL)} />
+          <MistButton kind="secondary" label="Terms of Service" onPress={() => void openLivePage(TERMS_URL)} />
           <MistButton label="Sign out" disabled={pending} onPress={() => void auth.signOut()} />
+          <TextButton
+            label={`Email ${CONTACT_EMAIL}`}
+            onPress={() => void Linking.openURL(accountDeletionMailto(session?.signedInAs ?? auth.role))}
+          />
           {confirming ? (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Delete this account on this device?</Text>
               <Text style={styles.cardBody}>
-                The button removes the local copy and signs you out. The result says Not sent. No account API is called.
+                Confirming removes the account stored on this device and signs you out. Customer and cleaner on this
+                email are both removed here. Nothing is sent to Tydlii. The result says Not sent.
+              </Text>
+              <Text style={styles.cardBody}>
+                To ask Tydlii to delete records it holds, email {CONTACT_EMAIL}. The privacy policy describes that
+                request.
               </Text>
               {error ? <Text style={styles.errorOnCard}>{error}</Text> : null}
-              <TextButton label="Deletion section on tydlii.com" onPress={() => void Linking.openURL(DELETE_ACCOUNT_URL)} />
+              <TextButton
+                label={`Email ${CONTACT_EMAIL}`}
+                onPress={() => void Linking.openURL(accountDeletionMailto(session?.signedInAs ?? auth.role))}
+              />
+              <TextButton
+                label="Deletion section on tydlii.com"
+                onPress={() => void openLivePage(DELETE_ACCOUNT_URL)}
+              />
               <MistButton label={pending ? "Working…" : "Confirm delete"} disabled={pending} onPress={() => void remove()} />
               <MistButton kind="secondary" label="Cancel" disabled={pending} onPress={() => setConfirming(false)} />
             </View>
@@ -693,4 +732,8 @@ const styles = StyleSheet.create({
   backSpacer: { width: 72 },
   topTitle: { flex: 1, textAlign: "center", color: "#070707", fontSize: 17, fontWeight: "600" },
   inkBody: { color: "#070707", fontSize: 15, lineHeight: 22 },
+  legalRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 },
+  legalHit: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
+  legalOnInk: { color: "#04a3ac", fontSize: 15, fontWeight: "600", textDecorationLine: "underline" },
+  legalOnMist: { color: "#04a3ac", fontSize: 15, fontWeight: "600", textDecorationLine: "underline" },
 });
