@@ -83,8 +83,16 @@ export default function JobScreen() {
                 </View>
               </View>
               <View style={styles.rule} />
+              {visit.lines.length > 0
+                ? visit.lines.map((line) => (
+                    <View key={line.label} style={styles.priceRow}>
+                      <Text style={styles.body}>{line.label}</Text>
+                      <Text style={styles.body}>{cad(line.amount)}</Text>
+                    </View>
+                  ))
+                : null}
               <View style={styles.priceRow}>
-                <Text style={styles.body}>Price locked</Text>
+                <Text style={styles.body}>{visit.lines.length > 0 ? "Total locked" : "Price locked"}</Text>
                 <Text style={styles.price}>
                   {cad(visit.beforeHst)} <Text style={styles.tax}>+ HST</Text>
                 </Text>

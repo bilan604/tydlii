@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DEFAULT_QUOTE_INPUT, quoteHome } from "@/lib/pricing";
+import { DEFAULT_QUOTE_INPUT, emptyAddOns, quoteHome } from "@/lib/pricing";
 import { normalizeReferralCode, REFERRAL_STORAGE_KEY } from "@/lib/referral";
 import { CleanerPitch } from "./CleanerPitch";
 import { Closer } from "./Closer";
@@ -26,6 +26,7 @@ export function Landing({ accessKey = "" }: { accessKey?: string }) {
     fullBaths: DEFAULT_QUOTE_INPUT.fullBaths,
     halfBaths: DEFAULT_QUOTE_INPUT.halfBaths,
     frequency: DEFAULT_QUOTE_INPUT.frequency,
+    addOns: emptyAddOns(),
   }));
   const pending = useRef<string | null>(null);
 

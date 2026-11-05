@@ -13,6 +13,8 @@
  * Overdue first visit = one-time × 1.4 (a reset). Otherwise the first visit is the one-time rate.
  * Round the charged pre-tax amount to the nearest price ending in 9 (`to9`).
  * Show that amount before HST, and again with 13% HST.
+ * Add-ons stack on that locked visit price. They are not multiplied by frequency,
+ * lived-in, or the overdue reset, and they are not run through `to9` again.
  *
  * Sq ft cut points label those bases. They are the public bands. A null base would
  * be a custom quote; every published band has a price.
@@ -332,5 +334,194 @@ export function landingPreviewShare(): { visitBeforeHst: number; share: number }
   return {
     visitBeforeHst: quote.plan.beforeHst,
     share: cleanerShareAmount(quote.plan.beforeHst),
+  };
+}
+
+/**
+ * Sellable extras. Prices are before HST.
+ * Flat rows are on or off. Blinds are per window. Bed linens are per bed.
+ * Laundry is one load. Interior windows show "from $39" and lock at $39
+ * for interior glass and tracks this visit.
+ * `unitPrice` is what a selected row adds. Nothing here is re-rounded.
+ */
+export const ADD_ONS = [
+  {
+    id: "fridge",
+    label: "Inside fridge",
+    menuPrice: "$29",
+    inclusion: "Empty perishables aside; shelves and drawers wiped.",
+    unitPrice: 29,
+    unit: "flat",
+    max: 1,
+  },
+  {
+    id: "oven",
+    label: "Inside oven",
+    menuPrice: "$29",
+    inclusion: "Racks and cavity. Not a self-clean cycle.",
+    unitPrice: 29,
+    unit: "flat",
+    max: 1,
+  },
+  {
+    id: "cabinets",
+    label: "Inside cabinets",
+    menuPrice: "$39",
+    inclusion: "Kitchen and bath cabinets this visit. Not whole-home closets.",
+    unitPrice: 39,
+    unit: "flat",
+    max: 1,
+  },
+  {
+    id: "windows",
+    label: "Interior windows & tracks",
+    menuPrice: "from $39",
+    inclusion: "Interior glass and tracks this visit.",
+    unitPrice: 39,
+    unit: "flat",
+    max: 1,
+  },
+  {
+    id: "blinds",
+    label: "Blinds",
+    menuPrice: "$8/window",
+    inclusion: "Per window, this visit.",
+    unitPrice: 8,
+    unit: "window",
+    max: 30,
+  },
+  {
+    id: "pets",
+    label: "Pets in home",
+    menuPrice: "$29",
+    inclusion: "Pet-home surcharge for extra hair and dander. Not a specialty odor treatment.",
+    unitPrice: 29,
+    unit: "flat",
+    max: 1,
+  },
+  {
+    id: "laundry",
+    label: "Laundry fold (1 load)",
+    menuPrice: "$25",
+    inclusion: "One load, folded.",
+    unitPrice: 25,
+    unit: "load",
+    max: 1,
+  },
+  {
+    id: "dishes",
+    label: "Dishes",
+    menuPrice: "$20",
+    inclusion: "Washed this visit.",
+    unitPrice: 20,
+    unit: "flat",
+    max: 1,
+  },
+  {
+    id: "linens",
+    label: "Change bed linens",
+    menuPrice: "$15/bed",
+    inclusion: "Per bed, this visit.",
+    unitPrice: 15,
+    unit: "bed",
+    max: 8,
+  },
+] as const;
+
+export type AddOn = (typeof ADD_ONS)[number];
+export type AddOnId = AddOn["id"];
+export type AddOnCounts = Record<AddOnId, number>;
+
+export type AddOnLine = {
+  id: AddOnId;
+  label: string;
+  inclusion: string;
+  quantity: number;
+  unitPrice: number;
+  /** Before HST. Menu price times quantity. */
+  amount: number;
+};
+
+export type StackedPrice = {
+  /** Visit price after `to9`, before add-ons. */
+  baseBeforeHst: number;
+  lines: AddOnLine[];
+  addOnsBeforeHst: number;
+  /** Locked base plus add-on lines. Not passed through `to9`. */
+  beforeHst: number;
+  withHst: number;
+};
+
+export function emptyAddOns(): AddOnCounts {
+  return {
+    fridge: 0,
+    oven: 0,
+    cabinets: 0,
+    windows: 0,
+    blinds: 0,
+    pets: 0,
+    laundry: 0,
+    dishes: 0,
+    linens: 0,
+  };
+}
+
+export function clampAddOnCount(id: AddOnId, quantity: number): number {
+  const addOn = ADD_ONS.find((item) => item.id === id);
+  if (!addOn || !Number.isFinite(quantity)) return 0;
+  return Math.min(addOn.max, Math.max(0, Math.round(quantity)));
+}
+
+export function normalizeAddOns(counts?: Partial<AddOnCounts> | null): AddOnCounts {
+  const next = emptyAddOns();
+  if (!counts) return next;
+  for (const addOn of ADD_ONS) {
+    next[addOn.id] = clampAddOnCount(addOn.id, counts[addOn.id] ?? 0);
+  }
+  return next;
+}
+
+export function addOnLines(counts?: Partial<AddOnCounts> | null): AddOnLine[] {
+  const normalized = normalizeAddOns(counts);
+  const lines: AddOnLine[] = [];
+  for (const addOn of ADD_ONS) {
+    const quantity = normalized[addOn.id];
+    if (quantity <= 0) continue;
+    lines.push({
+      id: addOn.id,
+      label: addOn.label,
+      inclusion: addOn.inclusion,
+      quantity,
+      unitPrice: addOn.unitPrice,
+      amount: addOn.unitPrice * quantity,
+    });
+  }
+  return lines;
+}
+
+/** Receipt label. Counted rows name the quantity; flat rows use the menu name. */
+export function addOnLineLabel(line: AddOnLine): string {
+  const addOn = ADD_ONS.find((item) => item.id === line.id);
+  if (!addOn || addOn.unit === "flat" || addOn.unit === "load") return line.label;
+  if (addOn.unit === "window") {
+    return `${line.label} · ${line.quantity} ${line.quantity === 1 ? "window" : "windows"}`;
+  }
+  return `${line.label} · ${line.quantity} ${line.quantity === 1 ? "bed" : "beds"}`;
+}
+
+/** Add menu prices on top of a visit price that is already locked. */
+export function stackOnLockedBase(
+  baseBeforeHst: number,
+  counts?: Partial<AddOnCounts> | null,
+): StackedPrice {
+  const lines = addOnLines(counts);
+  const addOnsBeforeHst = lines.reduce((sum, line) => sum + line.amount, 0);
+  const beforeHst = baseBeforeHst + addOnsBeforeHst;
+  return {
+    baseBeforeHst,
+    lines,
+    addOnsBeforeHst,
+    beforeHst,
+    withHst: withHst(beforeHst),
   };
 }

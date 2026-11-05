@@ -4,6 +4,7 @@ import { Block, Button, Chip, Screen } from "@/components/ui";
 import { useBooking } from "@/lib/booking";
 import { WINDOWS, upcomingDays, windowLabel, type WindowId } from "@/lib/draft";
 import { cad } from "@/lib/format";
+import { addOnLineLabel } from "@tydlii/quote";
 import { presentQuote } from "@/lib/present";
 import { colors } from "@/theme";
 
@@ -13,7 +14,7 @@ export default function ScheduleScreen() {
   const days = upcomingDays();
   const addressReady = draft.address.trim().length >= 5;
   const ready = addressReady && draft.dayId.length > 0 && !presented.custom;
-  const charge = presented.custom ? null : presented.quote.first;
+  const charge = presented.custom ? null : presented.first;
 
   return (
     <Screen
@@ -24,6 +25,11 @@ export default function ScheduleScreen() {
           {charge ? (
             <Text style={styles.priceLine}>
               This visit {cad(charge.beforeHst)} + HST
+              {charge.lines.length > 0
+                ? `\nLocked clean ${cad(charge.baseBeforeHst)}${charge.lines
+                    .map((line) => ` · ${addOnLineLabel(line)} ${cad(line.amount)}`)
+                    .join("")}`
+                : ""}
             </Text>
           ) : (
             <Text style={styles.priceLine}>Choose a home size with a listed price.</Text>
@@ -92,6 +98,6 @@ const styles = StyleSheet.create({
   body: { color: colors.ink, fontSize: 14, lineHeight: 20, marginTop: 10 },
   gap: { gap: 12, marginBottom: 20 },
   footer: { gap: 8 },
-  priceLine: { color: colors.mist, fontSize: 16, fontWeight: "600" },
+  priceLine: { color: colors.mist, fontSize: 16, fontWeight: "600", lineHeight: 22 },
   hint: { color: colors.mist, fontSize: 14 },
 });
