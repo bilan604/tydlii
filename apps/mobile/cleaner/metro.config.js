@@ -12,6 +12,7 @@ config.resolver.extraNodeModules = {
   react: path.resolve(projectRoot, "node_modules/react"),
   "react-dom": path.resolve(projectRoot, "node_modules/react-dom"),
   "react-native": path.resolve(projectRoot, "node_modules/react-native"),
+  "expo-web-browser": path.resolve(projectRoot, "node_modules/expo-web-browser"),
 };
 
 module.exports = config;

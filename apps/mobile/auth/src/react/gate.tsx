@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { AuthLoading } from "./screens";
 import { useAuth } from "./provider";
 
-const OPEN_ROUTES = new Set(["sign-in", "sign-up", "auth"]);
+const OPEN_ROUTES = new Set(["sign-in", "sign-up", "auth", "privacy", "terms"]);
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const auth = useAuth();

@@ -1,6 +1,8 @@
+import { openLegalUrl } from "@tydlii/auth/react";
 import { router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { Button, Screen } from "@/components/ui";
+import { CONTACT_EMAIL, PRIVACY_URL, TERMS_URL } from "../../shared/src";
 import { colors } from "@/theme";
 
 export default function SettingsScreen() {
@@ -8,11 +10,22 @@ export default function SettingsScreen() {
     <Screen title="Settings">
       <View style={styles.stack}>
         <Text style={styles.body}>
-          Store review screens. Privacy and terms open tydlii.com. Account deletion is wired for the future API and
-          does not send a request.
+          Privacy Policy and Terms of Service open on tydlii.com. This app does not keep a copy. Delete account removes
+          it on this device and does not call Tydlii.
         </Text>
-        <Button label="Privacy Policy" onPress={() => router.push("/privacy")} />
-        <Button kind="secondary" label="Terms" onPress={() => router.push("/terms")} />
+        <Text style={styles.body}>
+          Questions and deletion requests go to{" "}
+          <Text
+            accessibilityRole="link"
+            style={styles.link}
+            onPress={() => void Linking.openURL(`mailto:${CONTACT_EMAIL}`)}
+          >
+            {CONTACT_EMAIL}
+          </Text>
+          .
+        </Text>
+        <Button label="Privacy Policy" onPress={() => void openLegalUrl(PRIVACY_URL)} />
+        <Button kind="secondary" label="Terms of Service" onPress={() => void openLegalUrl(TERMS_URL)} />
         <Button kind="secondary" label="Delete account" onPress={() => router.push("/delete-account")} />
         <Button kind="quiet" label="Canada coverage" onPress={() => router.push("/coverage")} />
       </View>
@@ -23,4 +36,5 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   stack: { gap: 12 },
   body: { color: colors.ink, fontSize: 15, lineHeight: 22 },
+  link: { color: colors.teal, fontWeight: "600", textDecorationLine: "underline" },
 });

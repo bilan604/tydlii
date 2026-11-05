@@ -22,7 +22,7 @@ export {
 } from "./coverage";
 export { distanceMeters, densify, etaMinutes, layoutVisit, type MapPoint } from "./geo";
 export { DeviceGpsStream, SimulatedGpsStream, type DeviceLocationAdapter, type GpsFix, type GpsPermission, type GpsStream, type LatLng } from "./gps";
-export { CONTACT_EMAIL, PRIVACY_SUMMARY, PRIVACY_URL, TERMS_SUMMARY, TERMS_URL } from "./legal";
+export { CONTACT_EMAIL, PRIVACY_URL, TERMS_URL } from "./legal";
 export { MAPLIBRE_CSS, MAPLIBRE_JS, OSM_TILE_URL, buildLiveMapHtml, liveMapCleanerMessage } from "./live-map-html";
 export {
   STRIPE_PUBLISHABLE_KEY_ENV,

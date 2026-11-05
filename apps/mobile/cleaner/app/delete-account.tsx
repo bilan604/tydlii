@@ -1,5 +1,5 @@
 import { DELETE_ACCOUNT_URL } from "@tydlii/auth";
-import { useAuth } from "@tydlii/auth/react";
+import { openLegalUrl, useAuth } from "@tydlii/auth/react";
 import { useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import { CONTACT_EMAIL, requestAccountDeletion } from "../../shared/src";
@@ -29,9 +29,16 @@ export default function DeleteAccountScreen() {
         </Text>
         <Card>
           <Text style={styles.title}>{role === "customer" ? "Customer profile" : "Cleaner profile"}</Text>
-          <Text style={styles.body}>Deleting the profile would sign this device out and clear the sample ledger.</Text>
+          <Text style={styles.body}>This signs the device out and clears the sample ledger.</Text>
         </Card>
-        <Button label="Open tydlii.com/privacy#delete-account" onPress={() => void Linking.openURL(DELETE_ACCOUNT_URL)} />
+        <Button label="Open deletion section on tydlii.com" onPress={() => void openLegalUrl(DELETE_ACCOUNT_URL)} />
+        <Button
+          kind="secondary"
+          label={`Email ${CONTACT_EMAIL}`}
+          onPress={() =>
+            void Linking.openURL(`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Delete my Tydlii account")}`)
+          }
+        />
         {message ? <Text style={styles.message}>{message}</Text> : null}
         {confirming ? (
           <Button

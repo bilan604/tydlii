@@ -19,7 +19,7 @@ Session keys: `tydlii.auth.vault.v1` and `tydlii.auth.session.v1.customer` or `.
 
 Hosted sign-in stays off unless both `EXPO_PUBLIC_AUTH_ISSUER` and `EXPO_PUBLIC_AUTH_CLIENT_ID` are set. See `apps/mobile/auth/.env.example`. CI leaves them empty. A provider response is not exchanged and does not create a session.
 
-Delete account, from Account or Settings, opens [https://tydlii.com/privacy#delete-account](https://tydlii.com/privacy#delete-account) and clears the local copy. The result says **Not sent**. Auth does not ask for location or Face ID. The cleaner app's when-in-use location strings are only for an active job, unchanged by sign-in.
+Privacy Policy and Terms of Service, on sign-in, sign-up, home, Account, and Settings, open [https://tydlii.com/privacy](https://tydlii.com/privacy) and [https://tydlii.com/terms](https://tydlii.com/terms) in the in-app browser. The apps do not keep a copy of those pages. Delete account, from home, Account, or Settings, opens [https://tydlii.com/privacy#delete-account](https://tydlii.com/privacy#delete-account), offers an email to `teamtydlii@gmail.com`, and clears the local copy. The result says **Not sent**. Auth does not ask for location or Face ID. The cleaner app's when-in-use location strings are only for an active job, unchanged by sign-in.
 
 ## Brand
 
@@ -45,7 +45,7 @@ Entry screen, then:
 3. **Pay** — Stripe PaymentSheet stand-in in test mode. The button opens a sheet, confirms a placeholder card, and does not call Stripe. `pk_live_` keys are refused, including odd casing and a value that also contains `pk_test_`. Nothing is charged.
 4. **Live visit** — a MapLibre map of the real streets and buildings. Teal cleaner pin, ink home pin, teal route. The cleaner pin moves on a simulated GPS trace. Status chips: En route, Arrived, Cleaning, Done. ETA counts down, then the trace stops at Done.
 
-**Settings** opens privacy, terms, delete account, and Canada coverage. Delete account clears the local copy, says "Not sent", and opens the live privacy section. Privacy, terms, and delete account tell people to email `teamtydlii@gmail.com` for support and deletion. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
+**Settings** opens the live privacy policy and terms, delete account, and Canada coverage. Delete account clears the local copy, says "Not sent", and opens the live privacy section. Privacy, terms, and delete account tell people to email `teamtydlii@gmail.com` for support and deletion. The same links are on Account and on both the customer and cleaner home screens. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
 
 "Preview a sample visit" opens the map without a booking. The sample uses the $229 site preview, not a dispatched cleaner. The customer's phone is not tracked.
 

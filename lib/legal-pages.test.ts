@@ -7,7 +7,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PrivacyPage from "../app/privacy/page";
 import TermsPage from "../app/terms/page";
-import { CONTACT_EMAIL } from "../apps/mobile/shared/src/legal";
+import { brand, DELETE_ACCOUNT_URL } from "../apps/mobile/auth/src/model";
+import { CONTACT_EMAIL, PRIVACY_URL, TERMS_URL } from "../apps/mobile/shared/src/legal";
 import { LEGAL_EMAIL, LEGAL_UPDATED, LOCATION_PURPOSE } from "./legal";
 
 const SUPPORT_EMAIL = "teamtydlii@gmail.com";
@@ -66,6 +67,65 @@ test("terms page is the hosted agreement the apps open", () => {
   assert.match(copy, /laws of Ontario/);
   assert.match(copy, /cancellation fee that was not shown/);
   assert.doesNotMatch(copy, /\[TODO/);
+});
+
+test("both apps open the live legal pages and offer account deletion", () => {
+  assert.equal(PRIVACY_URL, "https://tydlii.com/privacy");
+  assert.equal(TERMS_URL, "https://tydlii.com/terms");
+  assert.equal(DELETE_ACCOUNT_URL, `${PRIVACY_URL}#delete-account`);
+  assert.equal(brand.ink, "#070707");
+  assert.equal(brand.teal, "#04a3ac");
+
+  const opener = readFileSync(path.join(ROOT, "apps/mobile/auth/src/react/open-legal.ts"), "utf8");
+  assert.match(opener, /WebBrowser\.openBrowserAsync/);
+  assert.match(opener, /Linking\.openURL/);
+  assert.match(opener, /brand\.ink/);
+  assert.match(opener, /brand\.teal/);
+  assert.doesNotMatch(opener, /PRIVACY_SUMMARY|TERMS_SUMMARY/);
+
+  const links = readFileSync(path.join(ROOT, "apps/mobile/auth/src/react/legal-links.tsx"), "utf8");
+  assert.match(links, /Privacy Policy/);
+  assert.match(links, /Terms of Service/);
+  assert.match(links, /Delete account/);
+  assert.match(links, /openLegalUrl\(PRIVACY_URL\)/);
+  assert.match(links, /openLegalUrl\(TERMS_URL\)/);
+
+  const account = readFileSync(path.join(ROOT, "apps/mobile/auth/src/react/screens.tsx"), "utf8");
+  assert.equal((account.match(/<LegalDocumentLinks/g) ?? []).length, 3);
+  assert.match(account, /Delete account/);
+  assert.match(account, /mailto:\$\{CONTACT_EMAIL\}/);
+  assert.match(account, /openLegalUrl\(DELETE_ACCOUNT_URL\)/);
+
+  const gate = readFileSync(path.join(ROOT, "apps/mobile/auth/src/react/gate.tsx"), "utf8");
+  assert.match(gate, /"privacy"/);
+  assert.match(gate, /"terms"/);
+
+  for (const app of ["customer", "cleaner"]) {
+    const settings = readFileSync(path.join(ROOT, "apps/mobile", app, "app/settings.tsx"), "utf8");
+    assert.match(settings, /Privacy Policy/);
+    assert.match(settings, /Terms of Service/);
+    assert.match(settings, /Delete account/);
+    assert.match(settings, /openLegalUrl\(PRIVACY_URL\)/);
+    assert.match(settings, /openLegalUrl\(TERMS_URL\)/);
+    assert.match(settings, /mailto:\$\{CONTACT_EMAIL\}/);
+    assert.doesNotMatch(settings, /PRIVACY_SUMMARY|TERMS_SUMMARY/);
+
+    const home = readFileSync(path.join(ROOT, "apps/mobile", app, "app/index.tsx"), "utf8");
+    assert.equal((home.match(/<LegalDocumentLinks/g) ?? []).length, 2);
+    assert.match(home, /showDeleteAccount/);
+
+    for (const screen of ["privacy.tsx", "terms.tsx"]) {
+      const source = readFileSync(path.join(ROOT, "apps/mobile", app, "app", screen), "utf8");
+      assert.match(source, /openLegalUrl/);
+      assert.match(source, /mailto:\$\{CONTACT_EMAIL\}/);
+      assert.doesNotMatch(source, /PRIVACY_SUMMARY|TERMS_SUMMARY/);
+    }
+
+    const deletion = readFileSync(path.join(ROOT, "apps/mobile", app, "app/delete-account.tsx"), "utf8");
+    assert.match(deletion, /openLegalUrl\(DELETE_ACCOUNT_URL\)/);
+    assert.match(deletion, /mailto:\$\{CONTACT_EMAIL\}/);
+    assert.match(deletion, /Delete account/);
+  }
 });
 
 test("apps and the site share one support inbox", () => {

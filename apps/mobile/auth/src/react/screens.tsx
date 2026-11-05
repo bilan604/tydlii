@@ -13,8 +13,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { CONTACT_EMAIL } from "../../../shared/src/legal";
 import { DELETE_ACCOUNT_URL, isAuthError, persistenceLabel, withQuery, type AppRole, type MagicCode } from "../model";
 import { localCallbackBase, promptHostedSignIn } from "./hosted-prompt";
+import { LegalDocumentLinks } from "./legal-links";
+import { openLegalUrl } from "./open-legal";
 import { useAuth } from "./provider";
 
 const ROLE_LABEL: Record<AppRole, string> = {
@@ -348,7 +351,11 @@ export function SignInScreen() {
       ) : null}
 
       <QuietButton label="Create an account" onPress={() => router.push("/sign-up")} />
-      <Text style={styles.fine}>Local dev auth. No email is sent and no server is called.</Text>
+      <LegalDocumentLinks tone="ink" />
+      <Text style={styles.fine}>
+        Privacy Policy and Terms of Service open on tydlii.com. Local dev auth. No email is sent and no server is
+        called.
+      </Text>
     </InkFrame>
   );
 }
@@ -436,6 +443,11 @@ export function SignUpScreen() {
           contentType="newPassword"
         />
         <Text style={styles.cardBody}>Stored only on this device, as a salted hash. Not sent.</Text>
+        <Text style={styles.cardBody}>
+          The privacy policy and the terms are published on tydlii.com. This app opens those pages and does not keep a
+          copy.
+        </Text>
+        <LegalDocumentLinks tone="mist" />
         {error ? <Text style={styles.errorOnCard}>{error}</Text> : null}
         <PrimaryButton
           label={pending ? "Working…" : "Create account"}
@@ -508,6 +520,19 @@ export function AccountScreen() {
             exists. Deleting here does not call Tydlii.
           </Text>
           <Text style={styles.inkBody}>This screen does not use your location.</Text>
+          <Text style={styles.inkBody}>
+            Delete account removes this email on this device and signs you out. It does not call Tydlii. To ask for
+            deletion of anything held for you, email{" "}
+            <Text
+              accessibilityRole="link"
+              style={styles.inlineLink}
+              onPress={() => void Linking.openURL(`mailto:${CONTACT_EMAIL}`)}
+            >
+              {CONTACT_EMAIL}
+            </Text>
+            .
+          </Text>
+          <LegalDocumentLinks tone="mist" />
           <MistButton label="Sign out" disabled={pending} onPress={() => void auth.signOut()} />
           {confirming ? (
             <View style={styles.card}>
@@ -516,7 +541,10 @@ export function AccountScreen() {
                 The button removes the local copy and signs you out. The result says Not sent. No account API is called.
               </Text>
               {error ? <Text style={styles.errorOnCard}>{error}</Text> : null}
-              <TextButton label="Deletion section on tydlii.com" onPress={() => void Linking.openURL(DELETE_ACCOUNT_URL)} />
+              <TextButton
+                label="Deletion section on tydlii.com"
+                onPress={() => void openLegalUrl(DELETE_ACCOUNT_URL)}
+              />
               <MistButton label={pending ? "Working…" : "Confirm delete"} disabled={pending} onPress={() => void remove()} />
               <MistButton kind="secondary" label="Cancel" disabled={pending} onPress={() => setConfirming(false)} />
             </View>
@@ -693,4 +721,5 @@ const styles = StyleSheet.create({
   backSpacer: { width: 72 },
   topTitle: { flex: 1, textAlign: "center", color: "#070707", fontSize: 17, fontWeight: "600" },
   inkBody: { color: "#070707", fontSize: 15, lineHeight: 22 },
+  inlineLink: { color: "#04a3ac", fontWeight: "600", textDecorationLine: "underline" },
 });
