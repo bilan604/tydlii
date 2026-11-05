@@ -106,11 +106,11 @@ The customer `development`, `preview`, and `production` profiles set the placeho
 
 ## Push
 
-Job status and arrival alerts are a scaffold on both apps. Settings → **Job alerts** asks for notification permission, then tries to read an Expo push token and hand it to a register URL. With the env vars unset, which is the committed default, the apps do not call Expo's push service and do not call a server. The web preview explains that registration is for the iOS and Android apps, and the switch stays off.
+Job status and arrival alerts are a scaffold on both apps. Settings → **Job alerts** asks for notification permission, then tries to read an Expo push token and hand it to a register URL. Each app's Expo project UUID is committed, so a phone can request a token. The register URL stays unset in git, so that token is not sent to a server. The web preview explains that registration is for the iOS and Android apps, and the switch stays off.
 
 | Rule | What happens |
 | --- | --- |
-| `EXPO_PUBLIC_EAS_PROJECT_ID` unset and `extra.eas.projectId` missing or not a UUID | The app does not call `getExpoPushTokenAsync`. No project id is committed. Do not invent one. `eas init` writes it later. Either the env var or that config field is enough. |
+| `EXPO_PUBLIC_EAS_PROJECT_ID` unset and `extra.eas.projectId` missing or not a UUID | The app does not call `getExpoPushTokenAsync`. Each app's UUID is committed at `extra.eas.projectId`. Either the env var or that field is enough. |
 | `EXPO_PUBLIC_PUSH_REGISTER_URL` unset or empty | The token, when one exists, is not sent. The screen says **Not sent**. |
 | Both set, and the URL is `https` | The app POSTs `{ role, token, platform, alerts }`. `alerts` is `job_status` and `arrival`. There is no auth header. |
 | Any other URL | Rejected. The app does not send. |
@@ -121,9 +121,10 @@ Expo Go on Android, from SDK 53 on, cannot register a remote push token. iOS Exp
 
 A future sender puts `{ kind, jobId, status }` on the Expo push `data`. `kind` is `job_status` or `arrival`. `status`, when present, is `enroute`, `arrived`, `cleaning`, or `done`. The apps keep the last payload of that shape. Opening the visit from it is still a TODO.
 
+The Expo project UUIDs are already committed. Customer (`@tydlii/tydlii-customer`) is `ed30d1f1-b1a8-479f-8309-a8ebd04a4cbe`. Cleaner (`@tydlii/tydlii-cleaner`) is `26014761-9e69-40e9-bc62-f71e1aa8e5fe`. `app.config.ts` copies `EXPO_PUBLIC_EAS_PROJECT_ID` into `extra.eas.projectId` when that value is a UUID, and otherwise keeps the id in `app.json`. Push registration reads either place. Paste the same UUID into the gitignored `.env` for a local run. Do not run `eas init`.
+
 Still needed before a phone can receive a job alert:
 
-- An Expo project UUID from `eas init`, one for each listing. Not in this repo until you paste it. `app.config.ts` copies `EXPO_PUBLIC_EAS_PROJECT_ID` into `extra.eas.projectId` when the value is a UUID, and push registration reads either place.
 - An APNs key for iOS and an FCM v1 service account for Android, stored in EAS credentials. Not in this repo. The config plugin sets the Android color to `#04a3ac`, the default channel to `job-status`, and iOS `aps-environment` to `development`. Background remote notifications stay off. Switch `mode` to `production` only after the production APNs key exists. An EAS iOS build may ask for that key because the entitlement is present. The key is not required to merge this scaffold.
 - A server that stores the token for the signed-in account and sends through the Expo push API. The Expo access token stays on that server.
 - The account API, so the token can be tied to a person. Sign-in is still local.
@@ -176,9 +177,9 @@ Then:
 
 ## EAS builds
 
-Each app has its own `eas.json`. There is no `submit` key. Do not run `eas submit`, and do not commit Apple or Google passwords, an API key, a client secret, or a keystore. `expo.owner` in both `app.json` files is the Expo account slug `tydlii`. There is no `extra.eas.projectId` in git. Do not invent that id.
+Each app has its own `eas.json`. There is no `submit` key. Do not run `eas submit`, and do not commit Apple or Google passwords, an API key, a client secret, `EXPO_TOKEN`, or a keystore. `expo.owner` in both `app.json` files is the Expo account slug `tydlii`. `extra.eas.projectId` is the existing project UUID for that app. Do not run `eas init` again.
 
-`app.config.ts` in each app is the link `eas init` was missing. It keeps the `eas.json` profiles as they are. When `EXPO_PUBLIC_EAS_PROJECT_ID` is a UUID, the resolved config sets `extra.eas.projectId`. A UUID already written under `expo.extra.eas.projectId` in `app.json` is kept. Any other string is ignored. The same file turns on Sign in with Apple and, when a real Google client id is in the environment at prebuild, adds the reversed client-id URL scheme. It does not add a submit profile.
+`app.config.ts` in each app keeps the `eas.json` profiles as they are. When `EXPO_PUBLIC_EAS_PROJECT_ID` is a UUID, the resolved config sets `extra.eas.projectId` and that value wins. A UUID already written under `expo.extra.eas.projectId` in `app.json` is the fallback. Any other string is ignored. The same file turns on Sign in with Apple and, when a real Google client id is in the environment at prebuild, adds the reversed client-id URL scheme. It does not add a submit profile.
 
 Run every `eas` command from the app directory (`apps/mobile/customer` or `apps/mobile/cleaner`), not the website root. These apps are not npm workspaces of the Next.js site. EAS uploads the git repo, so `packages/quote`, `apps/mobile/auth`, and `apps/mobile/shared` are on the builder. The builder uses Node `22.23.4`.
 
@@ -194,36 +195,26 @@ Run every `eas` command from the app directory (`apps/mobile/customer` or `apps/
 
 Customer profiles set `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` to `pk_test_tydlii_placeholder`. Leave that until a Stripe test key exists. Do not put a `pk_live_` key in `eas.json`. The cleaner profiles do not set a Stripe key. No profile sets a maps key or a push project id. Do not upload a binary until the founder says so.
 
-### Link the Expo project (`eas init`)
+### Expo project ids
 
-This does not need an Apple Developer account or a Play Console account. It does need an Expo access token, because creating the project is an authenticated call. The project id is not in git until that command succeeds.
+Both Expo projects already exist on the account `tydlii`. Do not run `eas init`.
 
-1. Create a token at [https://expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens). The account must be allowed to create projects for owner `tydlii`. If the Expo username or org slug is not `tydlii`, change `expo.owner` in both `app.json` files first.
-2. Paste it only in your shell. Do not commit it, and do not put it in `eas.json` or `.env.example`.
+| App | Expo project | UUID |
+| --- | --- | --- |
+| Customer (`apps/mobile/customer`) | `@tydlii/tydlii-customer` | `ed30d1f1-b1a8-479f-8309-a8ebd04a4cbe` |
+| Cleaner (`apps/mobile/cleaner`) | `@tydlii/tydlii-cleaner` | `26014761-9e69-40e9-bc62-f71e1aa8e5fe` |
 
-```bash
-export EXPO_TOKEN="paste-the-token-here"
-cd apps/mobile/customer
-npx eas-cli@latest init --non-interactive --force
-cd ../cleaner
-npx eas-cli@latest init --non-interactive --force
-```
+Each UUID is committed at `expo.extra.eas.projectId` in that app's `app.json`. For a local run, paste the same UUID into that app's gitignored `.env` as `EXPO_PUBLIC_EAS_PROJECT_ID`. Do not commit `EXPO_TOKEN`, a client secret, or the filled-in `.env`.
 
-3. The command prints a project UUID for that app. If it cannot edit `app.config.ts`, leave that file as it is and paste the UUID in both of these places:
-   - `expo.extra.eas.projectId` in that app's `app.json` (the id is public and safe to commit)
-   - `EXPO_PUBLIC_EAS_PROJECT_ID` in that app's gitignored `.env`, the same UUID
+`app.config.ts` copies a valid `EXPO_PUBLIC_EAS_PROJECT_ID` into the resolved `extra.eas.projectId`. When that env var is unset or not a UUID, the committed id stays. Push registration uses whichever one is a UUID.
 
-   `app.config.ts` copies a valid env UUID into the resolved config, and it keeps an id already in `app.json`. Push registration uses whichever one is a UUID. Repeat for the other app. The two listings need two project ids.
-
-4. Do not run `eas submit`. Do not add a submit profile.
-
-Without `EXPO_TOKEN`, `eas init` stops and asks you to log in. That is expected in CI and in this cloud checkout.
+Do not run `eas submit`. Do not add a submit profile.
 
 ### Once the store accounts exist
 
-1. Create the Expo account that should own the apps, if you did not do that above. If that username or org slug is not `tydlii`, change `expo.owner` in both `app.json` files before `eas init`.
-2. `npm i -g eas-cli`, then either `eas login` or `export EXPO_TOKEN` as above.
-3. In each app directory, `npm ci`, then `eas init` if the project id is not already in `app.json`. Commit the `extra.eas.projectId` it writes.
+1. The Expo account `tydlii` already owns both projects. If that slug ever changes, change `expo.owner` in both `app.json` files.
+2. `npm i -g eas-cli`, then `eas login`. Keep any access token in the shell only. Do not commit it.
+3. In each app directory, `npm ci`. The project id is already in `app.json`. Do not run `eas init`.
 4. For iOS `preview` and `production`, enroll in the Apple Developer Program and accept the current agreements. Create two App Store Connect records, Tydlii (`com.tydlii.customer`) and Tydlii Cleaner (`com.tydlii.cleaner`), or change the bundle ids first. They are not registered yet. Register phones with `eas device:create` before an iOS `preview` build.
 5. The first Android `preview` or `production` build can generate a release keystore and keep it on EAS. Let it. Do not copy the keystore or `credentials.json` into the repo.
 6. A Google Play Console account is not required to produce the AAB. It is required when someone uploads that file. Play Console needs `https://tydlii.com/privacy` and `https://tydlii.com/privacy#delete-account` as the account-deletion link. Add a submit profile in a later change, and only then run `eas submit`. That profile is intentionally absent from this repo.
@@ -239,4 +230,4 @@ eas build -p all --profile production
 
 Repeat from `apps/mobile/cleaner` for the other install. `production` does not upload.
 
-Still needed from the founder before a cloud build: `EXPO_TOKEN` and the two project UUIDs from `eas init`, pasted as above. Google sign-in on a phone also needs `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` present when the native project is generated (local `.env`, or the same keys on the EAS project after it exists). Apple on iOS needs no client id. Android and web Apple need `EXPO_PUBLIC_APPLE_SERVICE_ID` and `EXPO_PUBLIC_APPLE_REDIRECT_URI`. An Apple team is still needed for any iOS device or store build, and device UDIDs for iOS preview. Play Console is still needed before upload, not before `eas build`. A Stripe test publishable key is optional. After a binary exists, TestFlight still needs the build uploaded, an internal group, and for external testers Beta App Review, a privacy policy URL (`https://tydlii.com/privacy`), and export compliance. Filling the console forms, age rating, and data-safety answers is still a manual step. The apps open privacy and terms in the in-app browser from Sign in, Account, and Settings. Delete account links to `https://tydlii.com/privacy#delete-account` and emails `teamtydlii@gmail.com`. Do not run `eas submit` from this setup.
+Still needed from the founder before a cloud build: an Expo login, with `EXPO_TOKEN` only in the shell and never in git. The project UUIDs are already in each `app.json`; paste the same value into that app's gitignored `.env` as `EXPO_PUBLIC_EAS_PROJECT_ID`. Google sign-in on a phone also needs `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` present when the native project is generated (local `.env`, or the same keys on the EAS project after it exists). Apple on iOS needs no client id. Android and web Apple need `EXPO_PUBLIC_APPLE_SERVICE_ID` and `EXPO_PUBLIC_APPLE_REDIRECT_URI`. An Apple team is still needed for any iOS device or store build, and device UDIDs for iOS preview. Play Console is still needed before upload, not before `eas build`. A Stripe test publishable key is optional. After a binary exists, TestFlight still needs the build uploaded, an internal group, and for external testers Beta App Review, a privacy policy URL (`https://tydlii.com/privacy`), and export compliance. Filling the console forms, age rating, and data-safety answers is still a manual step. The apps open privacy and terms in the in-app browser from Sign in, Account, and Settings. Delete account links to `https://tydlii.com/privacy#delete-account` and emails `teamtydlii@gmail.com`. Do not run `eas submit` from this setup.

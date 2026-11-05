@@ -223,7 +223,13 @@ describe("push scaffold files", () => {
       assert.equal(plugin[1].defaultChannel, "job-status");
       assert.equal(plugin[1].enableBackgroundRemoteNotifications, false);
       const blob = JSON.stringify(appJson);
-      assert.doesNotMatch(blob, /projectId|google-services|GoogleService-Info|apiKey|BEGIN PRIVATE/i);
+      assert.doesNotMatch(blob, /google-services|GoogleService-Info|apiKey|BEGIN PRIVATE|EXPO_TOKEN/i);
+      const expectedId =
+        app === "customer" ? "ed30d1f1-b1a8-479f-8309-a8ebd04a4cbe" : "26014761-9e69-40e9-bc62-f71e1aa8e5fe";
+      assert.equal(
+        (appJson as { expo: { extra?: { eas?: { projectId?: string } } } }).expo.extra?.eas?.projectId,
+        expectedId,
+      );
 
       const pkg = readJson(`${app}/package.json`) as { dependencies: Record<string, string> };
       assert.match(pkg.dependencies["expo-notifications"], /^~57\.0\./);
@@ -234,9 +240,17 @@ describe("push scaffold files", () => {
     }
 
     const example = readFileSync(join(mobileRoot, ".env.example"), "utf8");
-    assert.match(example, /EXPO_PUBLIC_EAS_PROJECT_ID/);
+    const authExample = readFileSync(join(mobileRoot, "auth/.env.example"), "utf8");
+    for (const text of [example, authExample]) {
+      assert.match(text, /EXPO_PUBLIC_EAS_PROJECT_ID/);
+      assert.match(text, /ed30d1f1-b1a8-479f-8309-a8ebd04a4cbe/);
+      assert.match(text, /26014761-9e69-40e9-bc62-f71e1aa8e5fe/);
+      assert.match(text, /tydlii-customer/);
+      assert.match(text, /tydlii-cleaner/);
+      assert.doesNotMatch(text, /EXPO_PUBLIC_EAS_PROJECT_ID=[0-9a-f]/i);
+      assert.doesNotMatch(text, /EXPO_TOKEN=/);
+    }
     assert.match(example, /EXPO_PUBLIC_PUSH_REGISTER_URL/);
-    assert.doesNotMatch(example, /EXPO_PUBLIC_EAS_PROJECT_ID=[0-9a-f]/i);
     assert.doesNotMatch(example, /EXPO_PUBLIC_PUSH_REGISTER_URL=https?:\/\//);
 
     const hook = readFileSync(new URL("./react/use-job-alerts.tsx", import.meta.url), "utf8");
