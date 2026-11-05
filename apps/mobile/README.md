@@ -19,7 +19,7 @@ Session keys: `tydlii.auth.vault.v1` and `tydlii.auth.session.v1.customer` or `.
 
 Hosted sign-in stays off unless both `EXPO_PUBLIC_AUTH_ISSUER` and `EXPO_PUBLIC_AUTH_CLIENT_ID` are set. See `apps/mobile/auth/.env.example`. CI leaves them empty. A provider response is not exchanged and does not create a session.
 
-Delete account, from Account or Settings, opens [https://tydlii.com/privacy#delete-account](https://tydlii.com/privacy#delete-account) and clears the local copy. The result says **Not sent**. Auth does not ask for location or Face ID. The cleaner app's when-in-use location strings are only for an active job, unchanged by sign-in.
+Privacy Policy and Terms of Service open [https://tydlii.com/privacy](https://tydlii.com/privacy) and [https://tydlii.com/terms](https://tydlii.com/terms) in the in-app browser. Those links are on Sign in, Create account, Account, Settings, and both home modes. Signed-out people can also open the in-app privacy and terms screens. Delete account, from Account or Settings, explains that the on-device copy is removed for both roles, opens [https://tydlii.com/privacy#delete-account](https://tydlii.com/privacy#delete-account), and emails `teamtydlii@gmail.com`. The result says **Not sent**. Auth does not ask for location or Face ID. The cleaner app's when-in-use location strings are only for an active job, unchanged by sign-in.
 
 ## Brand
 
@@ -45,7 +45,7 @@ Entry screen, then:
 3. **Pay** — Stripe PaymentSheet stand-in in test mode. The button opens a sheet, confirms a placeholder card, and does not call Stripe. `pk_live_` keys are refused, including odd casing and a value that also contains `pk_test_`. Nothing is charged.
 4. **Live visit** — a MapLibre map of the real streets and buildings. Teal cleaner pin, ink home pin, teal route. The cleaner pin moves on a simulated GPS trace. Status chips: En route, Arrived, Cleaning, Done. ETA counts down, then the trace stops at Done.
 
-**Settings** opens privacy, terms, delete account, and Canada coverage. Delete account clears the local copy, says "Not sent", and opens the live privacy section. Privacy, terms, and delete account tell people to email `teamtydlii@gmail.com` for support and deletion. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
+**Settings** opens the live privacy policy and terms in the in-app browser, plus delete account and Canada coverage. Delete account clears the local copy for both roles, says "Not sent", and emails `teamtydlii@gmail.com`. The same links are on Account and on Sign in, before an account exists. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
 
 "Preview a sample visit" opens the map without a booking. The sample uses the $229 site preview, not a dispatched cleaner. The customer's phone is not tracked.
 
@@ -148,6 +148,6 @@ There is no `submit` key. Do not run `eas submit`. Do not upload a binary until 
 3. `npm i -g eas-cli`, then `eas login` with the Expo account that should own the projects. In each app directory, `eas init` attaches a project and writes `extra.eas.projectId`. Do not invent that id.
 4. `eas build -p ios --profile production` makes a store-signed binary. It does not upload. `preview` is an internal install for registered devices, not TestFlight.
 5. After you have looked at the binary, add a submit profile and only then run `eas submit`. That profile is intentionally absent from this repo.
-6. In App Store Connect, put the uploaded build on an internal TestFlight group. External TestFlight needs Beta App Review, a privacy policy URL, and export compliance. The apps already link to `https://tydlii.com/privacy` and `https://tydlii.com/terms`.
+6. In App Store Connect, put the uploaded build on an internal TestFlight group. External TestFlight needs Beta App Review, a privacy policy URL (`https://tydlii.com/privacy`), and export compliance. Play Console needs the same privacy URL and `https://tydlii.com/privacy#delete-account` as the account-deletion link. The apps open both pages from Sign in, Account, and Settings. Filling the console forms, age rating, and data-safety answers is still a manual step. There is no `eas submit` profile.
 7. Android waits on a Play Console account. `eas build -p android --profile production` makes an AAB. Uploading it is the same missing submit step.
 8. Keep `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` on a `pk_test_` value. Swap the placeholder for a real test publishable key only after the Stripe account exists. A `pk_live_` value will not open the sheet.

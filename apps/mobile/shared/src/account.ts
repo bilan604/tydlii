@@ -1,3 +1,5 @@
+import { CONTACT_EMAIL } from "./legal";
+
 export type AccountRole = "customer" | "cleaner";
 
 export type AccountDeletionResult =
@@ -20,6 +22,6 @@ export function requestAccountDeletion(input: {
   }
   return {
     status: "pending_api",
-    message: `Not sent. The account API is not connected yet. When it is, this will delete the Tydlii ${input.role} profile and sign you out.`,
+    message: `Not sent. The account API is not connected yet. Email ${CONTACT_EMAIL} to ask for deletion. When the API is connected, this will delete the Tydlii profile on this email, including customer and cleaner, and sign you out. This request was started as ${input.role}.`,
   };
 }

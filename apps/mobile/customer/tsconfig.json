@@ -30,6 +30,9 @@
       "expo-status-bar": [
         "./node_modules/expo-status-bar"
       ],
+      "expo-web-browser": [
+        "./node_modules/expo-web-browser"
+      ],
       "react": [
         "./node_modules/@types/react/index.d.ts"
       ],

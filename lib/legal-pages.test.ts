@@ -7,7 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PrivacyPage from "../app/privacy/page";
 import TermsPage from "../app/terms/page";
-import { CONTACT_EMAIL } from "../apps/mobile/shared/src/legal";
+import { CONTACT_EMAIL, accountDeletionMailto } from "../apps/mobile/shared/src/legal";
 import { LEGAL_EMAIL, LEGAL_UPDATED, LOCATION_PURPOSE } from "./legal";
 
 const SUPPORT_EMAIL = "teamtydlii@gmail.com";
@@ -72,12 +72,43 @@ test("apps and the site share one support inbox", () => {
   assert.equal(LEGAL_EMAIL, SUPPORT_EMAIL);
   assert.equal(CONTACT_EMAIL, LEGAL_EMAIL);
   for (const app of ["customer", "cleaner"]) {
-    for (const screen of ["privacy.tsx", "terms.tsx", "delete-account.tsx"]) {
+    for (const screen of ["privacy.tsx", "terms.tsx", "delete-account.tsx", "settings.tsx"]) {
       const source = readFileSync(path.join(ROOT, "apps/mobile", app, "app", screen), "utf8");
       assert.match(source, /CONTACT_EMAIL/);
       assert.match(source, /mailto:\$\{CONTACT_EMAIL\}/);
       assert.doesNotMatch(source, new RegExp(escaped(OUTBOUND_FROM)));
     }
+    const settings = readFileSync(path.join(ROOT, "apps/mobile", app, "app", "settings.tsx"), "utf8");
+    assert.match(settings, /openLivePage\(PRIVACY_URL\)/);
+    assert.match(settings, /openLivePage\(TERMS_URL\)/);
+    assert.match(settings, /\/delete-account/);
+    const home = readFileSync(path.join(ROOT, "apps/mobile", app, "app", "index.tsx"), "utf8");
+    assert.match(home, /openLivePage\(PRIVACY_URL\)/);
+    assert.match(home, /openLivePage\(TERMS_URL\)/);
+    assert.ok((home.match(/<LegalRow/g) ?? []).length >= 2, `${app} home shows legal links in both modes`);
+    const deletion = readFileSync(path.join(ROOT, "apps/mobile", app, "app", "delete-account.tsx"), "utf8");
+    assert.match(deletion, /accountDeletionMailto\(role\)/);
+    assert.match(deletion, /openLivePage\(DELETE_ACCOUNT_URL\)/);
+  }
+
+  const authScreens = readFileSync(path.join(ROOT, "apps/mobile/auth/src/react/screens.tsx"), "utf8");
+  assert.match(authScreens, /openLivePage\(PRIVACY_URL\)/);
+  assert.match(authScreens, /openLivePage\(TERMS_URL\)/);
+  assert.match(authScreens, /accountDeletionMailto\(/);
+  assert.match(authScreens, /CONTACT_EMAIL/);
+  assert.doesNotMatch(authScreens, new RegExp(escaped(OUTBOUND_FROM)));
+  const gate = readFileSync(path.join(ROOT, "apps/mobile/auth/src/react/gate.tsx"), "utf8");
+  assert.match(gate, /"privacy"/);
+  assert.match(gate, /"terms"/);
+
+  for (const role of ["customer", "cleaner"] as const) {
+    const href = accountDeletionMailto(role);
+    assert.match(href, new RegExp(`^mailto:${escaped(SUPPORT_EMAIL)}\\?`));
+    const text = decodeURIComponent(href);
+    assert.match(text, /Delete my Tydlii account/);
+    assert.match(text, new RegExp(`${role} app`));
+    assert.match(text, /customer and as a cleaner/);
+    assert.doesNotMatch(href, new RegExp(escaped(OUTBOUND_FROM)));
   }
 });
 

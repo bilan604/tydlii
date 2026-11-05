@@ -9,6 +9,7 @@ config.watchFolders = [path.resolve(projectRoot, "../shared"), quotePackage, aut
 config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules ?? {}),
   "@tydlii/quote": quotePackage,
+  "expo-web-browser": path.resolve(projectRoot, "node_modules/expo-web-browser"),
   react: path.resolve(projectRoot, "node_modules/react"),
   "react-dom": path.resolve(projectRoot, "node_modules/react-dom"),
   "react-native": path.resolve(projectRoot, "node_modules/react-native"),

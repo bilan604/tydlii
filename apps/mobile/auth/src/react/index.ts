@@ -1,4 +1,5 @@
 export { AuthGate } from "./gate";
 export { localCallbackBase, promptHostedSignIn } from "./hosted-prompt";
+export { openLivePage } from "./open-live-page";
 export { AuthProvider, useAuth } from "./provider";
 export { AccountScreen, AuthCallbackScreen, AuthLoading, RoleSwitch, SignInScreen, SignUpScreen } from "./screens";

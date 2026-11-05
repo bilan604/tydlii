@@ -13,6 +13,7 @@
     "expo-router": "*",
     "expo-secure-store": "*",
     "expo-status-bar": "*",
+    "expo-web-browser": "*",
     "react": "*",
     "react-native": "*",
     "react-native-safe-area-context": "*"

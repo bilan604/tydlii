@@ -254,6 +254,8 @@ test("deletion points at the live privacy section and is not sent", async () => 
   assert.equal(receipt.status, "not_sent");
   assert.equal(receipt.signedInAs, "cleaner");
   assert.match(receipt.detail, /https:\/\/tydlii.com\/privacy#delete-account/);
+  assert.match(receipt.detail, /teamtydlii@gmail.com/);
+  assert.match(receipt.detail, /customer and cleaner/);
 });
 
 test("hosted sign-in stays off unless both env values are set", () => {

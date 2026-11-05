@@ -1,13 +1,14 @@
+import { openLivePage } from "@tydlii/auth/react";
 import { router } from "expo-router";
 import { Linking, StyleSheet, Text } from "react-native";
 import { Button, Screen } from "@/components/ui";
-import { CONTACT_EMAIL, TERMS_SUMMARY, TERMS_URL } from "../../shared/src";
+import { CONTACT_EMAIL, TERMS_URL } from "../../shared/src";
 import { colors } from "@/theme";
 
 export default function TermsScreen() {
   return (
     <Screen title="Terms" onBack={() => router.back()}>
-      <Text style={styles.body}>{TERMS_SUMMARY}</Text>
+      <Text style={styles.body}>The terms are the page on tydlii.com. This app does not keep a separate copy.</Text>
       <Text style={styles.body}>
         Questions and support go to{" "}
         <Text
@@ -19,7 +20,7 @@ export default function TermsScreen() {
         </Text>
         .
       </Text>
-      <Button label="Open tydlii.com/terms" onPress={() => Linking.openURL(TERMS_URL)} />
+      <Button label="Open tydlii.com/terms" onPress={() => void openLivePage(TERMS_URL)} />
     </Screen>
   );
 }

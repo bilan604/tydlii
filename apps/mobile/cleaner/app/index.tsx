@@ -1,12 +1,29 @@
-import { RoleSwitch, useAuth } from "@tydlii/auth/react";
+import { RoleSwitch, openLivePage, useAuth } from "@tydlii/auth/react";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { PRIVACY_URL, TERMS_URL } from "../../shared/src";
 import { BrandMark } from "@/components/BrandMark";
 import { Button, Card, Screen } from "@/components/ui";
 import { cad } from "@/lib/format";
 import { SAMPLE_OFFER } from "@/lib/sample-offer";
 import { useSession } from "@/lib/session";
 import { colors } from "@/theme";
+
+function LegalRow() {
+  return (
+    <View style={styles.legalRow}>
+      <Pressable accessibilityRole="link" onPress={() => router.push("/coverage")}>
+        <Text style={styles.legal}>Coverage</Text>
+      </Pressable>
+      <Pressable accessibilityRole="link" onPress={() => void openLivePage(PRIVACY_URL)}>
+        <Text style={styles.legal}>Privacy Policy</Text>
+      </Pressable>
+      <Pressable accessibilityRole="link" onPress={() => void openLivePage(TERMS_URL)}>
+        <Text style={styles.legal}>Terms of Service</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const mode = useAuth().session?.signedInAs ?? "cleaner";
@@ -31,6 +48,7 @@ function CustomerMode() {
         </View>
         <Button kind="quiet" tone="ink" label="Account" onPress={() => router.push("/account")} />
         <Button kind="quiet" tone="ink" label="Settings" onPress={() => router.push("/settings")} />
+        <LegalRow />
       </View>
     </Screen>
   );
@@ -145,17 +163,7 @@ function CleanerHome() {
             Sample data only. This preview simulates GPS. A store build asks for location only during an active
             job, then stops. Nothing is paid out.
           </Text>
-          <View style={styles.legalRow}>
-            <Pressable accessibilityRole="link" onPress={() => router.push("/coverage")}>
-              <Text style={styles.legal}>Coverage</Text>
-            </Pressable>
-            <Pressable accessibilityRole="link" onPress={() => router.push("/privacy")}>
-              <Text style={styles.legal}>Privacy</Text>
-            </Pressable>
-            <Pressable accessibilityRole="link" onPress={() => router.push("/terms")}>
-              <Text style={styles.legal}>Terms</Text>
-            </Pressable>
-          </View>
+          <LegalRow />
         </View>
       </View>
     </Screen>
@@ -218,5 +226,5 @@ const styles = StyleSheet.create({
   actions: { gap: 10, marginTop: "auto" },
   fine: { color: colors.mist, fontSize: 13, lineHeight: 18, textAlign: "center" },
   legalRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 20 },
-  legal: { color: colors.mist, fontSize: 14, fontWeight: "600", textDecorationLine: "underline" },
+  legal: { color: colors.teal, fontSize: 14, fontWeight: "600", textDecorationLine: "underline" },
 });
