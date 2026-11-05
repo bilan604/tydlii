@@ -45,7 +45,7 @@ Entry screen, then:
 3. **Pay** — Stripe PaymentSheet stand-in in test mode. The button opens a sheet, confirms a placeholder card, and does not call Stripe. `pk_live_` keys are refused, including odd casing and a value that also contains `pk_test_`. Nothing is charged.
 4. **Live visit** — a MapLibre map of the real streets and buildings. Teal cleaner pin, ink home pin, teal route. The cleaner pin moves on a simulated GPS trace. Status chips: En route, Arrived, Cleaning, Done. ETA counts down, then the trace stops at Done.
 
-**Settings** opens the live privacy policy and terms in the in-app browser, plus delete account and Canada coverage. Delete account clears the local copy for both roles, says "Not sent", and emails `teamtydlii@gmail.com`. The same links are on Account and on Sign in, before an account exists. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
+**Settings** opens job alerts, the live privacy policy and terms in the in-app browser, delete account, and Canada coverage. Job alerts are the push scaffold: the switch asks for notification permission, and token registration stays off until the env vars below are set. Delete account clears the local copy for both roles, says "Not sent", and emails `teamtydlii@gmail.com`. The same links are on Account and on Sign in, before an account exists. Coverage lists every province and territory and keeps Toronto as the only soft-launch city. Booking still uses CityPlace, King West, and Liberty Village.
 
 "Preview a sample visit" opens the map without a booking. The sample uses the $229 site preview, not a dispatched cleaner. The customer's phone is not tracked.
 
@@ -86,6 +86,32 @@ Customer checkout only. Copy `apps/mobile/.env.example` to `apps/mobile/customer
 
 The customer `development`, `preview`, and `production` profiles set the placeholder. Leave them on `pk_test_` until a test account exists. Do not replace them with `pk_live_`. The cleaner profiles do not set a Stripe key.
 
+## Push
+
+Job status and arrival alerts are a scaffold on both apps. Settings → **Job alerts** asks for notification permission, then tries to read an Expo push token and hand it to a register URL. With the env vars unset, which is the committed default, the apps do not call Expo's push service and do not call a server. The web preview explains that registration is for the iOS and Android apps, and the switch stays off.
+
+| Rule | What happens |
+| --- | --- |
+| `EXPO_PUBLIC_EAS_PROJECT_ID` unset, empty, or not the Expo project UUID | The app does not call `getExpoPushTokenAsync`. No project id is committed. Do not invent one. `eas init` writes it later. |
+| `EXPO_PUBLIC_PUSH_REGISTER_URL` unset or empty | The token, when one exists, is not sent. The screen says **Not sent**. |
+| Both set, and the URL is `https` | The app POSTs `{ role, token, platform, alerts }`. `alerts` is `job_status` and `arrival`. There is no auth header. |
+| Any other URL | Rejected. The app does not send. |
+
+`registerPushToken` in `@tydlii/live` is the stub. It calls a transport only when the caller passes one, and the apps pass `fetch` only when the register URL is set. Copy the names from `apps/mobile/.env.example`. Leave the values empty. `eas.json` does not set them.
+
+Expo Go on Android, from SDK 53 on, cannot register a remote push token. iOS Expo Go can. A development build is the Android path once credentials exist. This scaffold still loads in Expo Go: the permission switch works, and a missing project id skips the token call.
+
+A future sender puts `{ kind, jobId, status }` on the Expo push `data`. `kind` is `job_status` or `arrival`. `status`, when present, is `enroute`, `arrived`, `cleaning`, or `done`. The apps keep the last payload of that shape. Opening the visit from it is still a TODO.
+
+Still needed before a phone can receive a job alert:
+
+- An Expo project UUID from `eas init`, one for each listing. Not in this repo.
+- An APNs key for iOS and an FCM v1 service account for Android, stored in EAS credentials. Not in this repo. The config plugin sets the Android color to `#04a3ac`, the default channel to `job-status`, and iOS `aps-environment` to `development`. Background remote notifications stay off. Switch `mode` to `production` only after the production APNs key exists. An EAS iOS build may ask for that key because the entitlement is present. The key is not required to merge this scaffold.
+- A server that stores the token for the signed-in account and sends through the Expo push API. The Expo access token stays on that server.
+- The account API, so the token can be tied to a person. Sign-in is still local.
+
+No `google-services.json`, `GoogleService-Info.plist`, or `.p8` belongs in git.
+
 ## Canada coverage
 
 `PROVINCES` lists all 13 provinces and territories. Toronto, Ontario is the only soft-launch city and the default. Launch neighbourhoods match the website: CityPlace, King West, Liberty Village. Yonge–Eglinton and North York Centre are later in Toronto. Other cities are planned.
@@ -97,7 +123,7 @@ The customer `development`, `preview`, and `production` profiles set the placeho
 - A live Stripe charge, a PaymentIntent, or a secret key in the app
 - A drawn map, or a native maps SDK, in place of MapLibre
 - A paid maps key
-- A real account API, push, or a shared backend. Sign-in and the role switch are local.
+- A real account API or a shared backend. Sign-in and the role switch are local. Push is a local scaffold and does not register a token until the env vars above are set.
 - One store listing. The two bundle ids stay. The role switch is inside each install.
 - Store submit (`eas submit` is not configured, and `eas.json` has no submit profile)
 
@@ -146,7 +172,7 @@ Run every `eas` command from the app directory (`apps/mobile/customer` or `apps/
 | `preview` | Internal install: Android APK, iOS ad hoc IPA for registered devices | Required, plus device UDIDs | Not required |
 | `production` | Store binary: Android App Bundle and an iOS IPA. Nothing is uploaded. | Required | Not required to build. Required only for a later upload. |
 
-Customer profiles set `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` to `pk_test_tydlii_placeholder`. Leave that until a Stripe test key exists. Do not put a `pk_live_` key in `eas.json`. The cleaner profiles do not set a Stripe key. No profile sets a maps key.
+Customer profiles set `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` to `pk_test_tydlii_placeholder`. Leave that until a Stripe test key exists. Do not put a `pk_live_` key in `eas.json`. The cleaner profiles do not set a Stripe key. No profile sets a maps key or a push project id. Do not upload a binary until the founder says so.
 
 ### Once the accounts exist
 

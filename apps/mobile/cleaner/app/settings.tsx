@@ -2,6 +2,7 @@ import { openLivePage } from "@tydlii/auth/react";
 import { router } from "expo-router";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import { CONTACT_EMAIL, PRIVACY_URL, TERMS_URL } from "../../shared/src";
+import { JobAlertsToggle } from "../../shared/src/react/use-job-alerts";
 import { Button, Screen } from "@/components/ui";
 import { colors } from "@/theme";
 
@@ -22,6 +23,7 @@ export default function SettingsScreen() {
           </Text>
           .
         </Text>
+        <JobAlertsToggle />
         <Button label="Privacy Policy" onPress={() => void openLivePage(PRIVACY_URL)} />
         <Button kind="secondary" label="Terms of Service" onPress={() => void openLivePage(TERMS_URL)} />
         <Button kind="secondary" label="Delete account" onPress={() => router.push("/delete-account")} />

@@ -3,6 +3,7 @@ import { AuthGate, AuthProvider } from "@tydlii/auth/react";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BrandMark } from "@/components/BrandMark";
+import { PushAlertsProvider } from "../../shared/src/react/use-job-alerts";
 import { LiveVisitProvider } from "@/lib/live-visit";
 import { SessionProvider } from "@/lib/session";
 import { colors } from "@/theme";
@@ -25,13 +26,15 @@ export default function RootLayout() {
         <SessionProvider>
           <LiveVisitProvider>
             <AuthGate>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: colors.mist },
-                  animation: "slide_from_right",
-                }}
-              />
+              <PushAlertsProvider role="cleaner">
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.mist },
+                    animation: "slide_from_right",
+                  }}
+                />
+              </PushAlertsProvider>
             </AuthGate>
           </LiveVisitProvider>
         </SessionProvider>

@@ -34,6 +34,15 @@
     "plugins": [
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "color": "#04a3ac",
+          "defaultChannel": "job-status",
+          "mode": "development",
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/brand/wordmark-light.png",
