@@ -84,7 +84,7 @@ Customer checkout only. Copy `apps/mobile/.env.example` to `apps/mobile/customer
 
 `resolveStripeTestConfig` and `createTestPaymentSheet` are the path. `init` / `present` / `cancel` match the shape of `@stripe/stripe-react-native` PaymentSheet enough to swap later. This build does not import that SDK, does not create a PaymentIntent, and does not talk to Stripe.
 
-Both EAS profiles on the customer app set the placeholder. Leave them on `pk_test_` until a test account exists. Do not replace them with `pk_live_`. The cleaner profiles do not set a Stripe key.
+The customer `development`, `preview`, and `production` profiles set the placeholder. Leave them on `pk_test_` until a test account exists. Do not replace them with `pk_live_`. The cleaner profiles do not set a Stripe key.
 
 ## Canada coverage
 
@@ -132,22 +132,40 @@ Then:
 
 ## EAS builds
 
-`eas.json` in each app sketches two build profiles and nothing else:
+Each app has its own `eas.json`. There is no `submit` key. Do not run `eas submit`, and do not commit Apple or Google passwords, an API key, or a keystore. `expo.owner` in both `app.json` files is the placeholder Expo account slug `tydlii`. There is no `extra.eas.projectId` until `eas init` writes one. Do not invent that id.
 
-| Profile | Distribution | Android artifact | Stripe |
+Run every `eas` command from the app directory (`apps/mobile/customer` or `apps/mobile/cleaner`), not the website root. These apps are not npm workspaces of the Next.js site. EAS uploads the git repo, so `packages/quote`, `apps/mobile/auth`, and `apps/mobile/shared` are on the builder. The builder uses Node `22.23.4`.
+
+`cli.appVersionSource` is `remote`. The `production` profile sets `autoIncrement`, so iOS build numbers and Android version codes live on EAS after the project exists. `expo.version` stays `0.1.0`. `ios.buildNumber` `"1"` and `android.versionCode` `1` only seed that counter. `promptToConfigurePushNotifications` is false. `ios.config.usesNonExemptEncryption` is false because the apps use HTTPS and on-device SHA-256. Change it if that stops being true.
+
+`development` does not set `developmentClient`. `expo-dev-client` is not a dependency. Day-to-day development stays on Expo Go.
+
+| Profile | Artifact | Apple Developer | Play Console |
 | --- | --- | --- | --- |
-| `preview` | internal (ad hoc on iOS, sideload APK on Android) | APK | Customer app only, `pk_test_tydlii_placeholder` |
-| `production` | store (the binary that can later go to TestFlight or Play) | app bundle | Customer app only, same placeholder |
+| `development` | iOS Simulator build, Android APK | Not required | Not required |
+| `preview` | Internal install: Android APK, iOS ad hoc IPA for registered devices | Required, plus device UDIDs | Not required |
+| `production` | Store binary: Android App Bundle and an iOS IPA. Nothing is uploaded. | Required | Not required to build. Required only for a later upload. |
 
-There is no `submit` key. Do not run `eas submit`. Do not upload a binary until the founder says so. Neither profile needs a maps key.
+Customer profiles set `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` to `pk_test_tydlii_placeholder`. Leave that until a Stripe test key exists. Do not put a `pk_live_` key in `eas.json`. The cleaner profiles do not set a Stripe key. No profile sets a maps key.
 
-### TestFlight, after an Apple Developer account
+### Once the accounts exist
 
-1. Enroll in the Apple Developer Program and accept the current agreements in App Store Connect.
-2. Create two apps, Tydlii (`com.tydlii.customer`) and Tydlii Cleaner (`com.tydlii.cleaner`), or change the bundle ids in `app.json` first if those placeholders are not the ones you want. They are not registered yet.
-3. `npm i -g eas-cli`, then `eas login` with the Expo account that should own the projects. In each app directory, `eas init` attaches a project and writes `extra.eas.projectId`. Do not invent that id.
-4. `eas build -p ios --profile production` makes a store-signed binary. It does not upload. `preview` is an internal install for registered devices, not TestFlight.
-5. After you have looked at the binary, add a submit profile and only then run `eas submit`. That profile is intentionally absent from this repo.
-6. In App Store Connect, put the uploaded build on an internal TestFlight group. External TestFlight needs Beta App Review, a privacy policy URL (`https://tydlii.com/privacy`), and export compliance. Play Console needs the same privacy URL and `https://tydlii.com/privacy#delete-account` as the account-deletion link. The apps open both pages from Sign in, Account, and Settings. Filling the console forms, age rating, and data-safety answers is still a manual step. There is no `eas submit` profile.
-7. Android waits on a Play Console account. `eas build -p android --profile production` makes an AAB. Uploading it is the same missing submit step.
-8. Keep `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` on a `pk_test_` value. Swap the placeholder for a real test publishable key only after the Stripe account exists. A `pk_live_` value will not open the sheet.
+1. Create the Expo account that should own the apps. If that username or org slug is not `tydlii`, change `expo.owner` in both `app.json` files before the next step.
+2. `npm i -g eas-cli`, then `eas login`.
+3. In each app directory, `npm ci`, then `eas init`. Commit the `extra.eas.projectId` it writes.
+4. For iOS `preview` and `production`, enroll in the Apple Developer Program and accept the current agreements. Create two App Store Connect records, Tydlii (`com.tydlii.customer`) and Tydlii Cleaner (`com.tydlii.cleaner`), or change the bundle ids first. They are not registered yet. Register phones with `eas device:create` before an iOS `preview` build.
+5. The first Android `preview` or `production` build can generate a release keystore and keep it on EAS. Let it. Do not copy the keystore or `credentials.json` into the repo.
+6. A Google Play Console account is not required to produce the AAB. It is required when someone uploads that file. Play Console needs `https://tydlii.com/privacy` and `https://tydlii.com/privacy#delete-account` as the account-deletion link. Add a submit profile in a later change, and only then run `eas submit`. That profile is intentionally absent from this repo.
+7. Keep `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` on a `pk_test_` value. Swap the placeholder for a real test publishable key only after the Stripe account exists. A `pk_live_` value will not open the sheet.
+
+```bash
+cd apps/mobile/customer
+eas build -p ios --profile development
+eas build -p android --profile development
+eas build -p all --profile preview
+eas build -p all --profile production
+```
+
+Repeat from `apps/mobile/cleaner` for the other install. `production` does not upload.
+
+Still needed from the founder before a cloud build: an Expo login and the two project ids from `eas init`. An Apple team is still needed for any iOS device or store build, and device UDIDs for iOS preview. Play Console is still needed before upload, not before `eas build`. A Stripe test publishable key is optional. After a binary exists, TestFlight still needs the build uploaded, an internal group, and for external testers Beta App Review, a privacy policy URL (`https://tydlii.com/privacy`), and export compliance. Filling the console forms, age rating, and data-safety answers is still a manual step. The apps open privacy and terms in the in-app browser from Sign in, Account, and Settings. Delete account links to `https://tydlii.com/privacy#delete-account` and emails `teamtydlii@gmail.com`.

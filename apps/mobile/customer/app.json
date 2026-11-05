@@ -2,6 +2,7 @@
   "expo": {
     "name": "Tydlii",
     "slug": "tydlii-customer",
+    "owner": "tydlii",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,10 +11,15 @@
     "backgroundColor": "#070707",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tydlii.customer"
+      "bundleIdentifier": "com.tydlii.customer",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.tydlii.customer",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#070707",
         "foregroundImage": "./assets/images/icon.png"

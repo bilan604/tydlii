@@ -2,6 +2,7 @@
   "expo": {
     "name": "Tydlii Cleaner",
     "slug": "tydlii-cleaner",
+    "owner": "tydlii",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,12 +12,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tydlii.cleaner",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Tydlii uses your location only during an active job so the customer can follow the visit. Tracking stops when the job is done."
       }
     },
     "android": {
       "package": "com.tydlii.cleaner",
+      "versionCode": 1,
       "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"],
       "adaptiveIcon": {
