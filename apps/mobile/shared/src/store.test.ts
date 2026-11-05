@@ -31,23 +31,75 @@ describe("store sketches", () => {
     }
   });
 
-  it("sketches preview and production builds and has no submit profile", () => {
+  it("defines development, preview, and production builds and has no submit profile", () => {
     for (const app of ["customer", "cleaner"]) {
       const eas = readJson(`${app}/eas.json`);
       assert.deepEqual(Object.keys(eas).sort(), ["build", "cli"]);
       assert.equal("submit" in eas, false);
-      const build = eas.build as Record<string, { distribution?: string; env?: Record<string, string> }>;
-      assert.deepEqual(Object.keys(build).sort(), ["preview", "production"]);
+      const cli = eas.cli as {
+        version: string;
+        appVersionSource: string;
+        promptToConfigurePushNotifications: boolean;
+      };
+      assert.equal(cli.version, ">= 16.0.0");
+      assert.equal(cli.appVersionSource, "remote");
+      assert.equal(cli.promptToConfigurePushNotifications, false);
+
+      const build = eas.build as Record<
+        string,
+        {
+          distribution?: string;
+          autoIncrement?: boolean;
+          node?: string;
+          developmentClient?: boolean;
+          ios?: { simulator?: boolean };
+          android?: { buildType?: string };
+          env?: Record<string, string>;
+        }
+      >;
+      assert.deepEqual(Object.keys(build).sort(), ["development", "preview", "production"]);
+      assert.equal(build.development?.distribution, "internal");
+      assert.equal(build.development?.ios?.simulator, true);
+      assert.equal(build.development?.android?.buildType, "apk");
+      assert.equal(build.development?.developmentClient, undefined);
       assert.equal(build.preview?.distribution, "internal");
+      assert.equal(build.preview?.ios, undefined);
+      assert.equal(build.preview?.android?.buildType, "apk");
       assert.equal(build.production?.distribution, "store");
+      assert.equal(build.production?.autoIncrement, true);
+      assert.equal(build.production?.android?.buildType, "app-bundle");
+      for (const profile of ["development", "preview", "production"]) {
+        assert.equal(build[profile]?.node, "22.23.4");
+      }
       const blob = JSON.stringify(eas);
       assert.doesNotMatch(blob, /pk_live_/);
       assert.doesNotMatch(blob, /"submit"/);
+      assert.doesNotMatch(blob, /developmentClient|appleTeamId|ascAppId|keystore/i);
+
+      const appJson = readJson(`${app}/app.json`) as {
+        expo: {
+          owner?: string;
+          extra?: { eas?: { projectId?: string } };
+          ios: {
+            bundleIdentifier: string;
+            buildNumber: string;
+            config?: { usesNonExemptEncryption?: boolean };
+          };
+          android: { package: string; versionCode: number };
+        };
+      };
+      assert.equal(appJson.expo.owner, "tydlii");
+      assert.equal(appJson.expo.extra?.eas?.projectId, undefined);
+      assert.equal(appJson.expo.ios.bundleIdentifier, `com.tydlii.${app}`);
+      assert.equal(appJson.expo.android.package, `com.tydlii.${app}`);
+      assert.equal(appJson.expo.ios.buildNumber, "1");
+      assert.equal(appJson.expo.android.versionCode, 1);
+      assert.equal(appJson.expo.ios.config?.usesNonExemptEncryption, false);
     }
 
     const customer = readJson("customer/eas.json");
     const build = customer.build as Record<string, { env: Record<string, string> }>;
-    for (const profile of ["preview", "production"]) {
+    for (const profile of ["development", "preview", "production"]) {
       assert.equal(build[profile]?.env[STRIPE_PUBLISHABLE_KEY_ENV], STRIPE_TEST_KEY_PLACEHOLDER);
     }
 

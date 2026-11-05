@@ -1,11 +1,26 @@
 {
   "cli": {
     "version": ">= 16.0.0",
-    "appVersionSource": "local"
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
   },
   "build": {
+    "development": {
+      "distribution": "internal",
+      "node": "22.23.4",
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_tydlii_placeholder"
+      }
+    },
     "preview": {
       "distribution": "internal",
+      "node": "22.23.4",
       "android": {
         "buildType": "apk"
       },
@@ -15,6 +30,8 @@
     },
     "production": {
       "distribution": "store",
+      "autoIncrement": true,
+      "node": "22.23.4",
       "android": {
         "buildType": "app-bundle"
       },

@@ -43,9 +43,10 @@ test("store builds sketch preview and production and never submit or a live key"
   assert.equal(easFiles.length, 2);
   for (const path of easFiles) {
     const json = JSON.parse(readFileSync(path, "utf8")) as {
-      build?: { preview?: unknown; production?: unknown };
+      build?: { development?: unknown; preview?: unknown; production?: unknown };
       submit?: unknown;
     };
+    assert.ok(json.build?.development);
     assert.ok(json.build?.preview);
     assert.ok(json.build?.production);
     assert.equal(json.submit, undefined);
