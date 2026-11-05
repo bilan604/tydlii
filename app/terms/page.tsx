@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalDocument, LegalSection } from "@/components/LegalDocument";
-import { LEGAL_EMAIL, LEGAL_UPDATED } from "@/lib/legal";
+import { LEGAL_EMAIL, TERMS_UPDATED } from "@/lib/legal";
 import { REFERRAL_CREDIT_PROMISE } from "@/lib/referral";
 
 export const metadata: Metadata = {
@@ -23,6 +23,7 @@ export default function TermsPage() {
       kicker="Terms"
       title="Terms of Service"
       lede="The rules for using Tydlii. The website is a waitlist. Paid booking is not open yet."
+      updated={TERMS_UPDATED}
     >
       <LegalSection title="Using Tydlii">
         <p>
@@ -35,7 +36,7 @@ export default function TermsPage() {
           it is not a contract for a clean. These terms do not take away rights you have under the laws of
           Ontario or Canada.
         </p>
-        <p>This version is dated {LEGAL_UPDATED}. Tydlii operates from Toronto, Ontario, Canada.</p>
+        <p>This version is dated {TERMS_UPDATED}. Tydlii operates from Toronto, Ontario, Canada.</p>
       </LegalSection>
 
       <LegalSection title="The waitlist is not a booking">
@@ -68,7 +69,9 @@ export default function TermsPage() {
           </li>
           <li>The arrival window is one hour. You can follow the visit while it is active</li>
           <li>
-            If we miss something on the Tydlii Standard, tell us within 48 hours and we re-clean within 24 hours
+            If we miss something on the Tydlii Standard for the visit you booked, tell us within 48 hours and we
+            re-clean that part within 24 hours, at no extra charge. The limits are in{" "}
+            <a href="#re-cleans">Re-cleans</a>
           </li>
           <li>
             If the cleaner is late for the arrival window, Tydlii credits the customer. That credit is not taken
@@ -78,6 +81,26 @@ export default function TermsPage() {
         <p>
           A cleaner can stop a job for safety and still be paid for that visit. Re-cleans and late-arrival
           credits are paid by Tydlii.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="re-cleans" title="Re-cleans">
+        <p>
+          A free re-clean applies when we miss something on the Tydlii Standard for the visit you booked. Tell
+          us within 48 hours of that visit by emailing{" "}
+          <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>. We re-clean what was missed within 24 hours of
+          your message. There is no extra charge, and the price you already accepted does not change.
+        </p>
+        <p>
+          It does not cover a new mess made after we leave. It does not cover extras that were not in the
+          booked scope, such as another room or an add-on that was not on the booking. If the home is
+          materially different from what you booked, we contact you before any further work, as described under
+          Prices.
+        </p>
+        <p>
+          The re-clean is for a genuine miss. We may refuse a request that is outside this promise, including
+          repeat abuse: a pattern of requests from the same account that are not a miss on the Standard. We
+          will tell you why. A genuine miss on a visit we did is still covered.
         </p>
       </LegalSection>
 

@@ -7,12 +7,14 @@ export function LegalDocument({
   kicker,
   title,
   lede,
+  updated = LEGAL_UPDATED,
   children,
 }: {
   current: "privacy" | "terms";
   kicker: string;
   title: string;
   lede: string;
+  updated?: string;
   children: ReactNode;
 }) {
   return (
@@ -44,7 +46,7 @@ export function LegalDocument({
               <h1>{title}</h1>
             </div>
             <p className="lede">{lede}</p>
-            <p className="legal-updated">Updated {LEGAL_UPDATED}</p>
+            <p className="legal-updated">Updated {updated}</p>
           </div>
         </div>
       </header>
