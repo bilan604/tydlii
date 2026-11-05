@@ -1,11 +1,11 @@
 import { RoleSwitch, useAuth } from "@tydlii/auth/react";
+import { CLEANER_SHARE_PERCENT, DEFAULT_QUOTE_INPUT, cleanerShareAmount, quoteHome } from "@tydlii/quote";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BrandMark } from "@/components/BrandMark";
 import { Button, Card, Screen } from "@/components/ui";
 import { cad } from "@/lib/format";
 import { useBooking } from "@/lib/booking";
-import { quoteHome } from "@/lib/pricing";
 import { colors } from "@/theme";
 
 export default function HomeScreen() {
@@ -16,16 +16,9 @@ export default function HomeScreen() {
 
 function CleanerMode() {
   const { previewSample } = useBooking();
-  const quote = quoteHome({
-    band: "C",
-    bedrooms: 2,
-    fullBaths: 1,
-    halfBaths: 0,
-    frequency: "biweekly",
-    condition: "standard",
-  });
+  const quote = quoteHome(DEFAULT_QUOTE_INPUT);
   const price = quote.custom || !quote.plan ? 0 : quote.plan.beforeHst;
-  const earn = Math.round(price * 67) / 100;
+  const earn = cleanerShareAmount(price);
 
   return (
     <Screen tone="ink">
@@ -44,7 +37,7 @@ function CleanerMode() {
           <Text style={styles.cardTitle}>Liberty Village</Text>
           <Text style={styles.cardBody}>
             2-bedroom · today, 9:00–11:00{"\n"}
-            {cad(earn, true)} is 67% of {cad(price)}
+            {cad(earn, true)} is {CLEANER_SHARE_PERCENT}% of {cad(price)}
           </Text>
           <Button
             label="Open the live visit"
