@@ -1,5 +1,5 @@
-/** Public contact for privacy requests and terms questions. */
-export const LEGAL_EMAIL = "hello@tydlii.com";
+/** The only inbox for privacy, deletion, and support. Not the Resend From address. */
+export const LEGAL_EMAIL = "teamtydlii@gmail.com";
 
 /** Shown on /privacy and /terms. */
 export const LEGAL_UPDATED = "4 November 2026";

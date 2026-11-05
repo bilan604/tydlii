@@ -65,7 +65,17 @@ test("the cleaner welcome posts the form link only when Resend is configured", a
   assert.deepEqual(result, { sent: true });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, RESEND_ENDPOINT);
-  const body = JSON.parse(String(calls[0].init?.body)) as { html: string; text: string; subject: string };
+  const body = JSON.parse(String(calls[0].init?.body)) as {
+    from: string;
+    reply_to: string;
+    html: string;
+    text: string;
+    subject: string;
+  };
+  assert.equal(body.from, "Tydlii <hello@tydlii.com>");
+  assert.equal(body.reply_to, "teamtydlii@gmail.com");
+  assert.doesNotMatch(body.html, /hello@tydlii\.com/);
+  assert.doesNotMatch(body.text, /hello@tydlii\.com/);
   assert.equal(body.subject, CLEANER_WELCOME_SUBJECT);
   assert.match(body.html, new RegExp(`href="${CLEANER_ONBOARDING_FORM_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
   assert.match(body.html, /Start onboarding/);

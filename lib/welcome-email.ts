@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { LEGAL_EMAIL } from "./legal";
 import { REFERRAL_CREDIT_PROMISE } from "./referral";
 import { SITE } from "./site";
 
@@ -11,7 +12,8 @@ import { SITE } from "./site";
  * Resend is the transactional path. Both env vars are optional:
  *
  * - RESEND_API_KEY
- * - EMAIL_FROM — a sender on a domain verified in Resend, e.g. `Tydlii <hello@tydlii.com>`
+ * - EMAIL_FROM — outbound Resend From on the verified tydlii.com domain, e.g. `Tydlii <hello@tydlii.com>`.
+ *   That address is not an inbox. Replies are routed to LEGAL_EMAIL.
  *
  * When either is missing or Resend errors, this logs and returns `{ sent: false }`.
  * The waitlist signup still succeeds.
@@ -295,6 +297,7 @@ export async function sendCustomerWelcome(
       body: JSON.stringify({
         from,
         to: [input.to],
+        reply_to: LEGAL_EMAIL,
         subject: message.subject,
         html: message.html,
         text: message.text,

@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PrivacyPage from "../app/privacy/page";
 import TermsPage from "../app/terms/page";
+import { CONTACT_EMAIL } from "../apps/mobile/shared/src/legal";
 import { LEGAL_EMAIL, LEGAL_UPDATED, LOCATION_PURPOSE } from "./legal";
+
+const SUPPORT_EMAIL = "teamtydlii@gmail.com";
+const OUTBOUND_FROM = ["hello", "tydlii.com"].join("@");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+function escaped(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 function text(html: string): string {
   return html
@@ -21,7 +33,9 @@ test("privacy page is the hosted policy the apps open", () => {
   assert.match(html, /src="\/brand\/wordmark-light\.png"/);
   assert.match(html, /href="\/terms"/);
   assert.match(html, /href="\/privacy#delete-account"/);
-  assert.match(html, new RegExp(LEGAL_EMAIL.replace(".", "\\.")));
+  assert.equal(LEGAL_EMAIL, SUPPORT_EMAIL);
+  assert.match(html, new RegExp(`mailto:${escaped(SUPPORT_EMAIL)}`));
+  assert.doesNotMatch(html, new RegExp(escaped(OUTBOUND_FROM)));
   assert.match(copy, new RegExp(LEGAL_UPDATED));
   assert.match(copy, new RegExp(LOCATION_PURPOSE.replace(/[().]/g, "\\$&")));
   assert.match(copy, /customer app does not collect location/i);
@@ -46,7 +60,55 @@ test("terms page is the hosted agreement the apps open", () => {
   assert.match(copy, /Stripe/);
   assert.match(copy, /67%/);
   assert.match(copy, /\$25 off their first clean/);
+  assert.equal(LEGAL_EMAIL, SUPPORT_EMAIL);
+  assert.match(html, new RegExp(`mailto:${escaped(SUPPORT_EMAIL)}`));
+  assert.doesNotMatch(html, new RegExp(escaped(OUTBOUND_FROM)));
   assert.match(copy, /laws of Ontario/);
   assert.match(copy, /cancellation fee that was not shown/);
   assert.doesNotMatch(copy, /\[TODO/);
+});
+
+test("apps and the site share one support inbox", () => {
+  assert.equal(LEGAL_EMAIL, SUPPORT_EMAIL);
+  assert.equal(CONTACT_EMAIL, LEGAL_EMAIL);
+  for (const app of ["customer", "cleaner"]) {
+    for (const screen of ["privacy.tsx", "terms.tsx", "delete-account.tsx"]) {
+      const source = readFileSync(path.join(ROOT, "apps/mobile", app, "app", screen), "utf8");
+      assert.match(source, /CONTACT_EMAIL/);
+      assert.match(source, /mailto:\$\{CONTACT_EMAIL\}/);
+      assert.doesNotMatch(source, new RegExp(escaped(OUTBOUND_FROM)));
+    }
+  }
+});
+
+test("the domain address appears only as the Resend From identity", () => {
+  const hits: { file: string; line: string }[] = [];
+  const skip = new Set(["node_modules", ".git", ".next", "dist", "coverage"]);
+  const textName = /\.(tsx?|jsx?|mjs|cjs|md|json|ya?ml|html|css|txt|example)$/;
+
+  function walk(dir: string) {
+    for (const entry of readdirSync(dir)) {
+      if (skip.has(entry) || entry === "package-lock.json") continue;
+      const full = path.join(dir, entry);
+      const stat = statSync(full);
+      if (stat.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!textName.test(entry) && entry !== ".env.example") continue;
+      const text = readFileSync(full, "utf8");
+      if (!text.includes(OUTBOUND_FROM)) continue;
+      const relative = path.relative(ROOT, full);
+      for (const line of text.split("\n")) {
+        if (line.includes(OUTBOUND_FROM)) hits.push({ file: relative, line });
+      }
+    }
+  }
+
+  walk(ROOT);
+  assert.ok(hits.length > 0);
+  for (const hit of hits) {
+    assert.match(hit.line, /EMAIL_FROM|body\.from/, `${hit.file}: ${hit.line}`);
+    assert.doesNotMatch(hit.line, /mailto:hello@tydlii\.com/, hit.file);
+  }
 });

@@ -1,4 +1,5 @@
 import { CLEANER_ONBOARDING_FORM_URL } from "./cleaner-onboarding";
+import { LEGAL_EMAIL } from "./legal";
 import { RESEND_ENDPOINT } from "./welcome-email";
 
 /**
@@ -6,8 +7,9 @@ import { RESEND_ENDPOINT } from "./welcome-email";
  * The only link is Start onboarding, which opens CLEANER_ONBOARDING_FORM_URL.
  *
  * Uses the same optional Resend config as the customer welcome
- * (`RESEND_API_KEY`, `EMAIL_FROM`). When either is missing or Resend errors,
- * this logs and returns `{ sent: false }`. The waitlist signup still succeeds.
+ * (`RESEND_API_KEY`, `EMAIL_FROM`). EMAIL_FROM is the outbound From identity
+ * only. Replies go to LEGAL_EMAIL. When either env var is missing or Resend
+ * errors, this logs and returns `{ sent: false }`. The waitlist signup still succeeds.
  */
 
 export const CLEANER_WELCOME_SUBJECT = "You're on the Tydlii cleaner list";
@@ -102,6 +104,7 @@ export async function sendCleanerWelcome(
       body: JSON.stringify({
         from,
         to: [input.to],
+        reply_to: LEGAL_EMAIL,
         subject: message.subject,
         html: message.html,
         text: message.text,
