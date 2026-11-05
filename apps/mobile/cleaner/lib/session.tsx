@@ -101,10 +101,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             recorded: true,
             earnings: [
               {
-                id: "sample-liberty",
+                id: "sample-larger-home",
                 title: `${SAMPLE_OFFER.area} · ${SAMPLE_OFFER.home}`,
                 amount: SAMPLE_OFFER.earn,
-                detail: `${SAMPLE_OFFER.share} of $${SAMPLE_OFFER.price}`,
+                detail: `${SAMPLE_OFFER.share} of $${SAMPLE_OFFER.price} before HST · ${SAMPLE_OFFER.shareGrown} path $${SAMPLE_OFFER.earnAt72.toFixed(2)}`,
               },
               ...current.earnings,
             ],

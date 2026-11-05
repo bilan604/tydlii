@@ -186,7 +186,7 @@ test("customer presentation, landing presentation, and checkout price agree for 
   }
 });
 
-test("the customer draft and the cleaner sample use the landing preview", () => {
+test("the customer draft stays on the landing preview, and the cleaner sample is the larger home", () => {
   assert.equal(DEFAULT_DRAFT.band, DEFAULT_QUOTE_INPUT.band);
   assert.equal(DEFAULT_DRAFT.bedrooms, DEFAULT_QUOTE_INPUT.bedrooms);
   assert.equal(DEFAULT_DRAFT.fullBaths, DEFAULT_QUOTE_INPUT.fullBaths);
@@ -197,11 +197,14 @@ test("the customer draft and the cleaner sample use the landing preview", () => 
   const presented = presentQuote(DEFAULT_QUOTE_INPUT);
   assert.equal(presented.custom, false);
   if (presented.custom || !presented.quote.plan) return;
-  assert.equal(SAMPLE_OFFER.price, presented.quote.plan.beforeHst);
-  assert.equal(SAMPLE_OFFER.earn, cleanerShareAmount(presented.quote.plan.beforeHst));
+  assert.equal(presented.quote.plan.beforeHst, 229);
+  assert.equal(presented.quote.plan.withHst, 258.77);
+  assert.equal(SAMPLE_OFFER.price, 349);
+  assert.equal(SAMPLE_OFFER.earn, cleanerShareAmount(SAMPLE_OFFER.price));
+  assert.equal(SAMPLE_OFFER.earnAt72, cleanerShareAmount(SAMPLE_OFFER.price, CLEANER_SHARE_GROWTH_PERCENT));
   assert.equal(SAMPLE_OFFER.share, `${CLEANER_SHARE_PERCENT}%`);
-  assert.equal(SAMPLE_OFFER.price, 229);
-  assert.equal(SAMPLE_OFFER.earn, 153.43);
+  assert.equal(SAMPLE_OFFER.shareGrown, `${CLEANER_SHARE_GROWTH_PERCENT}%`);
+  assert.notEqual(SAMPLE_OFFER.price, presented.quote.plan.beforeHst);
 });
 
 test("the landing and the apps do not keep a second price table", () => {
@@ -233,12 +236,15 @@ test("the landing and the apps do not keep a second price table", () => {
   assert.equal(/max=\{[0-9]+\}/.test(book), false);
 
   const pitch = readFileSync("components/CleanerPitch.tsx", "utf8");
-  assert.equal(pitch.includes("landingPreviewShare"), true);
+  assert.equal(pitch.includes("EXAMPLE_LARGER_CLEAN"), true);
+  assert.equal(pitch.includes("CLEANER_SHARE_PERCENT"), true);
   assert.equal(pitch.includes("153.43"), false);
   assert.equal(pitch.includes("$229"), false);
 
   const offer = readFileSync("apps/mobile/cleaner/lib/sample-offer.ts", "utf8");
+  assert.equal(offer.includes("@tydlii/quote"), true);
   assert.equal(offer.includes("cleanerShareAmount"), true);
-  assert.equal(offer.includes("DEFAULT_QUOTE_INPUT"), true);
+  assert.equal(offer.includes("SAMPLE_HOME"), true);
+  assert.equal(offer.includes("DEFAULT_QUOTE_INPUT"), false);
   assert.equal(offer.includes("153.43"), false);
 });

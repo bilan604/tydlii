@@ -53,14 +53,16 @@ export default function NavigateScreen() {
               ))}
             </View>
             <Card>
-              <Text style={styles.kicker}>{SAMPLE_OFFER.area}</Text>
-              <Text style={styles.title}>
-                {SAMPLE_OFFER.address}, {SAMPLE_OFFER.unit}
+              <Text style={styles.kicker}>
+                {SAMPLE_OFFER.example} · {SAMPLE_OFFER.area}
               </Text>
+              <Text style={styles.title}>{SAMPLE_OFFER.place}</Text>
               <Text style={styles.body}>
                 {SAMPLE_OFFER.when}
                 {"\n"}
                 {SAMPLE_OFFER.home}
+                {"\n"}
+                {SAMPLE_OFFER.rhythm}
               </Text>
             </Card>
             {onTheWay ? (
