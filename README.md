@@ -228,6 +228,14 @@ Bands A–C are the published small-home prices. From 1,000 sq ft up, the base i
 - `to9` rounds the pre-tax charge to the nearest amount ending in 9
 - The page shows that amount before HST and with 13% HST
 
+## Control room
+
+`/control` is a private founder room for Tydlii’s own desks: Tydlii coordinates, Tydlii Intake triages the waitlist, Tydlii Pipeline handles cleaner onboarding, and Tydlii Desk holds decisions. It is not linked from the landing page. `/control/preview` is a read-only DEMO with fictional records and no owner password. Neither path is indexed.
+
+Owner sign-in stays disconnected until `CONTROL_ROOM_OWNER_PASSWORD` and `CONTROL_ROOM_SESSION_SECRET` are set on the server. Sessions are httpOnly cookies checked on every admin request. The room can record tasks, handoffs, and approval decisions in `CONTROL_ROOM_STORE_PATH` (on Render, `/var/data/control-room.json` on the existing disk). Recording does not message a specialist. Consequential actions — external messages, cleaner approval, merges, deploys, purchases, live Stripe, store submission, DNS, and routine changes — fail closed.
+
+Cursor chat agents are not readable from this website. `POST /api/control/bridge/cursor-status` accepts only a signed legacy status webhook, and only after `CONTROL_ROOM_CURSOR_WEBHOOK_SECRET` is set. A finished coding run is not an Intake handoff. The browser cannot prompt an agent. See [docs/control-room.md](docs/control-room.md) for the readiness audit and for a later `control.tydlii.com` hostname. This repo does not change DNS or deploy that hostname.
+
 ## Deploy on Render
 
 This is a Node web service. The waitlist email is sent by the browser. `/api/waitlist` reserves the address in the dedupe file; it does not call Web3Forms.
