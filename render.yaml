@@ -40,3 +40,13 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      # Private control room. Leave unset until the founder chooses them.
+      # They are not a Cursor API key and they do not send mail.
+      - key: CONTROL_ROOM_OWNER_PASSWORD
+        sync: false
+      - key: CONTROL_ROOM_SESSION_SECRET
+        sync: false
+      - key: CONTROL_ROOM_CURSOR_WEBHOOK_SECRET
+        sync: false
+      - key: CONTROL_ROOM_STORE_PATH
+        value: /var/data/control-room.json

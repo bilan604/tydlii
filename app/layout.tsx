@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { Outfit } from "next/font/google";
 import { AREAS } from "@/lib/areas";
 import { SITE } from "@/lib/site";
@@ -91,7 +92,8 @@ const jsonLd = {
   sameAs: [SITE.social.instagram, SITE.social.x, SITE.social.tiktok],
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  const control = (await headers()).get("x-tydlii-chrome") === "control";
   return (
     <html lang="en-CA" className={outfit.variable}>
       <body>
@@ -99,7 +101,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           Skip to content
         </a>
         <div id="content">{children}</div>
-        <Footer />
+        {control ? null : <Footer />}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </body>
     </html>
