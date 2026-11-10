@@ -1084,6 +1084,33 @@ main.shell {
   align-self: flex-start;
 }
 
+.duplicate-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-self: center;
+  padding: 20px 22px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--danger) 6%, var(--bg));
+}
+
+.duplicate-notice h3 {
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+.duplicate-notice p {
+  color: var(--text);
+}
+
+.duplicate-notice .btn {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
 .earn {
   position: relative;
   background: var(--navy);

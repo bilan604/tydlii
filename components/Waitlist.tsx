@@ -195,11 +195,31 @@ function Actions({
   );
 }
 
-function AlreadyListed({ onReset }: { onReset: () => void }) {
+export function DuplicateNotice({
+  existingType,
+  onReset,
+}: {
+  existingType: "customer" | "cleaner" | null;
+  onReset: () => void;
+}) {
+  const where =
+    existingType === "customer"
+      ? "This address is already on the customer list."
+      : existingType === "cleaner"
+        ? "This address is already on the cleaner list."
+        : "This address is already saved.";
   return (
-    <Success kicker="Waitlist" title="You're already on the list." onReset={onReset}>
-      This email is already signed up, so we didn't send it again.
-    </Success>
+    <div className="duplicate-notice" role="alert">
+      <p className="eyebrow">Not sent</p>
+      <h3>This email is already on the waitlist.</h3>
+      <p>
+        {where} Customer and cleaner forms share one email. Nothing new was sent: no welcome email, and no
+        notice to the team. Enter a different email to join.
+      </p>
+      <button className="btn btn-line" type="button" onClick={onReset}>
+        Use a different email
+      </button>
+    </div>
   );
 }
 
@@ -249,6 +269,7 @@ export function CustomerWaitlist({
   const [honeypot, setHoneypot] = useState("");
   const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
+  const [listedAs, setListedAs] = useState<"customer" | "cleaner" | null>(null);
   const [error, setError] = useState("");
   const [referred, setReferred] = useState(false);
 
@@ -301,6 +322,7 @@ export function CustomerWaitlist({
       return;
     }
     if (result.status === "duplicate") {
+      setListedAs(result.existingType ?? null);
       setStatus("duplicate");
       return;
     }
@@ -343,9 +365,11 @@ export function CustomerWaitlist({
             Check your email for your referral link. {REFERRAL_CREDIT_PROMISE}
           </Success>
         ) : status === "duplicate" ? (
-          <AlreadyListed
+          <DuplicateNotice
+            existingType={listedAs}
             onReset={() => {
               setStatus("idle");
+              setListedAs(null);
               setConsent(false);
               setChecked(false);
             }}
@@ -443,6 +467,7 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
   const [honeypot, setHoneypot] = useState("");
   const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
+  const [listedAs, setListedAs] = useState<"customer" | "cleaner" | null>(null);
   const [error, setError] = useState("");
 
   const emailOk = EMAIL.test(email.trim());
@@ -505,6 +530,7 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
       return;
     }
     if (result.status === "duplicate") {
+      setListedAs(result.existingType ?? null);
       setStatus("duplicate");
       return;
     }
@@ -542,9 +568,11 @@ export function CleanerWaitlist({ accessKey = "" }: { accessKey?: string }) {
             {hoods.join(", ")}.
           </Success>
         ) : status === "duplicate" ? (
-          <AlreadyListed
+          <DuplicateNotice
+            existingType={listedAs}
             onReset={() => {
               setStatus("idle");
+              setListedAs(null);
               setConsent(false);
               setChecked(false);
             }}
