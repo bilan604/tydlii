@@ -60,9 +60,26 @@ export async function claimWaitlistRequest(
   const claim = await store.claim(parsed.value, {
     referralCode: referralCodeFromInput(input),
   });
-  if (claim.status === "duplicate") return { status: 200, body: { ok: true, duplicate: true } };
+  if (claim.status === "duplicate") {
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        duplicate: true,
+        ...(claim.existingType ? { existingType: claim.existingType } : {}),
+      },
+    };
+  }
   if (claim.status === "unavailable") return { status: 503, body: { ok: false, error: SAVE_ERROR } };
-  return { status: 200, body: { ok: true, claimed: true, claimId: claim.claimId } };
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      claimed: true,
+      claimId: claim.claimId,
+      ...(claim.test ? { test: true } : {}),
+    },
+  };
 }
 
 /**
@@ -89,9 +106,13 @@ export async function confirmWaitlistRequest(
         ...confirmed.signup,
         createdAt: confirmed.createdAt,
         source: "tydlii.com",
-        referralCode: confirmed.referral?.code,
-        referredByEmail: confirmed.referral?.referredByEmail ?? undefined,
-        referredByCode: confirmed.referral?.referredByCode ?? undefined,
+        ...(confirmed.test
+          ? { test: true as const }
+          : {
+              referralCode: confirmed.referral?.code,
+              referredByEmail: confirmed.referral?.referredByEmail ?? undefined,
+              referredByCode: confirmed.referral?.referredByCode ?? undefined,
+            }),
       },
       webhookUrl,
     );

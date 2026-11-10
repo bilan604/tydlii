@@ -14,7 +14,13 @@ export const dynamic = "force-dynamic";
  * - WAITLIST_STORE_PATH — JSON file of addresses already on the list. On Render this
  *   must sit on the persistent disk (`/var/data/waitlist-emails.json`).
  * - WAITLIST_SEED_EMAILS — optional comma-separated addresses already signed up.
- *   They count as duplicates and are not written into the file.
+ *   They count as duplicates and are not written into the file. No addresses
+ *   are seeded in code. Do not put tester addresses here.
+ * - WAITLIST_TEST_EMAILS — optional comma-separated extras that may submit both
+ *   forms repeatedly. josephkocsisan2020@gmail.com is always included. Testers
+ *   bypass the seed list and the one-email file. A confirmed tester is not
+ *   stored and is tagged [test] on the team notification. Honeypot rules still
+ *   apply. Real addresses stay one entry per email.
  * - RESEND_API_KEY — optional. Customer welcome email after confirm. Missing key
  *   skips the mail and does not fail the signup. See README.
  * - EMAIL_FROM — optional sender for that welcome, required together with the key.

@@ -32,7 +32,13 @@ services:
       - key: WAITLIST_STORE_PATH
         value: /var/data/waitlist-emails.json
       # Optional. Comma-separated emails that joined before the file existed.
+      # Do not put tester addresses here. A seed is always a duplicate.
       - key: WAITLIST_SEED_EMAILS
+        sync: false
+      # Optional extras that may submit both forms again. The app always allows
+      # josephkocsisan2020@gmail.com as well. Testers are not stored as leads.
+      # Runtime only. A restart is enough; this is not baked into the client.
+      - key: WAITLIST_TEST_EMAILS
         sync: false
       # Optional. Customer welcome email via Resend. Leave unset and signups still succeed.
       # Verify tydlii.com in Resend, then set both and redeploy (runtime env; no client rebuild).

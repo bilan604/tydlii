@@ -23,8 +23,19 @@ import type { WaitlistSignup } from "./waitlist";
  * One address for the whole waitlist (customer and cleaner share it).
  * A pending reserve expires so a closed tab can try again. Confirming after
  * Web3Forms accepts removes the expiry.
+ *
+ * Tester addresses skip that limit. They are the built-in founder default plus
+ * `WAITLIST_TEST_EMAILS`. A confirmed tester is not kept in the file and does
+ * not keep referral credits. Seeded addresses stay duplicates unless they are
+ * testers. There is no code default for `WAITLIST_SEED_EMAILS`.
  */
 export const CLAIM_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * Founder address used to retest both forms. Always included unless this list
+ * changes. `WAITLIST_TEST_EMAILS` adds more; it does not remove these.
+ */
+export const DEFAULT_WAITLIST_TEST_EMAILS = ["josephkocsisan2020@gmail.com"] as const;
 
 const SOURCE = "tydlii.com";
 
@@ -61,12 +72,19 @@ type StoreFile = {
 };
 
 export type ClaimOutcome =
-  | { status: "claimed"; claimId: string }
-  | { status: "duplicate" }
+  | { status: "claimed"; claimId: string; test?: boolean }
+  | { status: "duplicate"; existingType?: WaitlistSignup["type"] }
   | { status: "unavailable" };
 
 export type ConfirmOutcome =
-  | { status: "confirmed"; signup: WaitlistSignup; createdAt: string; referral: CustomerReferral | null }
+  | {
+      status: "confirmed";
+      signup: WaitlistSignup;
+      createdAt: string;
+      referral: CustomerReferral | null;
+      /** Tester confirm. The row is not left in the file. */
+      test?: boolean;
+    }
   | { status: "already" }
   | { status: "missing" }
   | { status: "unavailable" };
@@ -120,6 +138,11 @@ export type StoreOptions = {
   filePath?: string;
   /** When set, used instead of WAITLIST_SEED_EMAILS. */
   seedEmails?: readonly string[];
+  /**
+   * When set, used instead of the built-in tester default plus WAITLIST_TEST_EMAILS.
+   * An empty list means nobody is a tester.
+   */
+  testEmails?: readonly string[];
   now?: () => number;
   /** Skip the Render disk check. Tests pass true. Production leaves this unset. */
   durable?: boolean;
@@ -152,6 +175,13 @@ export function parseSeedEmails(raw: string | undefined): Set<string> {
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) out.add(email);
   }
   return out;
+}
+
+/** Built-in tester addresses plus any extras in WAITLIST_TEST_EMAILS. */
+export function waitlistTestEmails(env: NodeJS.ProcessEnv = process.env): Set<string> {
+  const emails = parseSeedEmails(DEFAULT_WAITLIST_TEST_EMAILS.join(","));
+  for (const email of parseSeedEmails(env.WAITLIST_TEST_EMAILS)) emails.add(email);
+  return emails;
 }
 
 /** Local file, or the Render disk path when the service is running there. */
@@ -192,6 +222,32 @@ async function statExistingAncestor(start: string): Promise<{ dev: number } | nu
 function seedsOf(options: StoreOptions): Set<string> {
   if (options.seedEmails) return new Set(options.seedEmails.map((email) => normalizeEmail(email)));
   return parseSeedEmails(process.env.WAITLIST_SEED_EMAILS);
+}
+
+function testEmailsOf(options: StoreOptions): Set<string> {
+  if (options.testEmails) return new Set(options.testEmails.map((email) => normalizeEmail(email)));
+  return waitlistTestEmails();
+}
+
+function dropCreditsFor(file: StoreFile, email: string): void {
+  file.credits = file.credits.filter(
+    (credit) =>
+      credit.referredEmail !== email && credit.referrerEmail !== email && credit.beneficiaryEmail !== email,
+  );
+}
+
+/** A code for the customer welcome only. It is not stored and cannot be redeemed. */
+function ephemeralCustomerReferral(file: StoreFile): CustomerReferral {
+  const code = uniqueReferralCode(file);
+  return {
+    code,
+    shareUrl: referralShareUrl(code),
+    manageUrl: referralManageUrl(code),
+    referredByCode: null,
+    referredByEmail: null,
+    friendDiscountCents: 0,
+    creditsCreated: 0,
+  };
 }
 
 function emptyFile(): StoreFile {
@@ -437,7 +493,8 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
   return {
     async claim(signup, meta) {
       const email = normalizeEmail(signup.email);
-      if (seedsOf(options).has(email)) return { status: "duplicate" };
+      const test = testEmailsOf(options).has(email);
+      if (!test && seedsOf(options).has(email)) return { status: "duplicate" };
       const target = filePath();
       if (!(await ensureDurable(target))) {
         logUnavailable(target);
@@ -448,14 +505,15 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
         return await withLock(target, async () => {
           const file = await load(target);
           const current = file.entries[email];
-          if (current && (!current.pendingUntil || pendingActive(current, now()))) {
+          if (!test && current && (!current.pendingUntil || pendingActive(current, now()))) {
             console.log("[tydlii waitlist] duplicate", email);
-            return { status: "duplicate" } as const;
+            return { status: "duplicate", existingType: current.type } as const;
           }
           const claimId = randomUUID();
           file.entries[email] = snapshot(signup, claimId, now(), referralCode || null);
+          if (test) dropCreditsFor(file, email);
           await save(target, file);
-          return { status: "claimed", claimId } as const;
+          return { status: "claimed", claimId, ...(test ? { test: true } : {}) } as const;
         });
       } catch (error) {
         logUnavailable(target, error);
@@ -466,7 +524,8 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
     async confirm(email, claimId) {
       const key = normalizeEmail(email);
       const id = claimId.trim();
-      if (seedsOf(options).has(key)) return { status: "already" };
+      const test = testEmailsOf(options).has(key);
+      if (!test && seedsOf(options).has(key)) return { status: "already" };
       const target = filePath();
       if (!(await ensureDurable(target))) {
         logUnavailable(target);
@@ -477,7 +536,17 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
           const file = await load(target);
           const current = file.entries[key];
           if (!current || current.claimId !== id) return { status: "missing" } as const;
-          if (!current.pendingUntil) return { status: "already" } as const;
+          if (!current.pendingUntil && !test) return { status: "already" } as const;
+          if (test) {
+            const referral = current.type === "customer" ? ephemeralCustomerReferral(file) : null;
+            const signup = toSignup(current);
+            const createdAt = current.createdAt;
+            delete file.entries[key];
+            dropCreditsFor(file, key);
+            await save(target, file);
+            console.log("[tydlii waitlist] tester confirmed, not stored", key);
+            return { status: "confirmed", signup, createdAt, referral, test: true } as const;
+          }
           const at = new Date(now()).toISOString();
           const referral = current.type === "customer" ? attachCustomerReferral(file, current, at) : null;
           current.pendingUntil = null;
@@ -498,7 +567,7 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
     async release(email, claimId) {
       const key = normalizeEmail(email);
       const id = claimId.trim();
-      if (seedsOf(options).has(key)) return "kept";
+      if (!testEmailsOf(options).has(key) && seedsOf(options).has(key)) return "kept";
       const target = filePath();
       if (!(await ensureDurable(target))) {
         logUnavailable(target);
@@ -522,7 +591,7 @@ export function createWaitlistStore(options: StoreOptions = {}): WaitlistStore {
 
     async forget(email) {
       const key = normalizeEmail(email);
-      if (seedsOf(options).has(key)) return "seeded";
+      if (!testEmailsOf(options).has(key) && seedsOf(options).has(key)) return "seeded";
       const target = filePath();
       if (!(await ensureDurable(target))) {
         logUnavailable(target);

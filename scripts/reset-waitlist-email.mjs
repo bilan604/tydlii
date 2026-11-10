@@ -1,14 +1,21 @@
 /**
  * Remove addresses from the waitlist JSON file.
  * Seeded addresses live in WAITLIST_SEED_EMAILS and are not changed here.
+ * Tester addresses (the built-in founder default plus WAITLIST_TEST_EMAILS)
+ * are not blocked by that seed list. Keep this default in sync with
+ * DEFAULT_WAITLIST_TEST_EMAILS in lib/waitlist-store.ts.
  *
  *   node scripts/reset-waitlist-email.mjs person@example.com
  *   node scripts/reset-waitlist-email.mjs --all
  *
  * On Render, run this in the service shell. A one-off job cannot see the disk.
  */
+
 import { mkdir, open, readFile, rename, stat, unlink } from "node:fs/promises";
 import path from "node:path";
+
+/** Keep in sync with DEFAULT_WAITLIST_TEST_EMAILS in lib/waitlist-store.ts. */
+const DEFAULT_TEST_EMAILS = ["josephkocsisan2020@gmail.com"];
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,13 +30,22 @@ function normalize(email) {
   return email.trim().toLowerCase();
 }
 
-function seedSet() {
+function emailSet(raw) {
   const out = new Set();
-  const raw = process.env.WAITLIST_SEED_EMAILS ?? "";
   for (const part of raw.split(/[\s,;]+/)) {
     const email = normalize(part);
     if (EMAIL.test(email)) out.add(email);
   }
+  return out;
+}
+
+function seedSet() {
+  return emailSet(process.env.WAITLIST_SEED_EMAILS ?? "");
+}
+
+function testSet() {
+  const out = emailSet(DEFAULT_TEST_EMAILS.join(","));
+  for (const email of emailSet(process.env.WAITLIST_TEST_EMAILS ?? "")) out.add(email);
   return out;
 }
 
@@ -134,7 +150,7 @@ if (!EMAIL.test(email)) {
   process.exit(1);
 }
 
-if (seedSet().has(email)) {
+if (seedSet().has(email) && !testSet().has(email)) {
   console.error(
     `${email} is in WAITLIST_SEED_EMAILS. Remove it from the environment and redeploy. The file was not changed.`,
   );
@@ -143,7 +159,13 @@ if (seedSet().has(email)) {
 
 const key = Object.keys(data.entries).find((item) => normalize(item) === email);
 if (!key) {
-  console.log(`${email} was not in ${filePath}.`);
+  if (testSet().has(email)) {
+    console.log(
+      `${email} was not in ${filePath}. Tester addresses can submit again without a reset, including when they are also in WAITLIST_SEED_EMAILS.`,
+    );
+  } else {
+    console.log(`${email} was not in ${filePath}.`);
+  }
   process.exit(0);
 }
 

@@ -38,7 +38,13 @@ const friend: WaitlistSignup = {
 };
 
 function storeAt(filePath: string) {
-  return createWaitlistStore({ filePath, durable: true, seedEmails: [], now: () => Date.parse("2026-10-26T12:00:00.000Z") });
+  return createWaitlistStore({
+    filePath,
+    durable: true,
+    seedEmails: [],
+    testEmails: [],
+    now: () => Date.parse("2026-10-26T12:00:00.000Z"),
+  });
 }
 
 async function tempFile() {
@@ -216,7 +222,7 @@ test("the same email cannot refer itself and an unknown code does not open a cre
     const referrer = await join(store, mina);
     assert.ok(referrer.referral);
     const again = await store.claim(mina, { referralCode: referrer.referral.code });
-    assert.deepEqual(again, { status: "duplicate" });
+    assert.deepEqual(again, { status: "duplicate", existingType: "customer" });
 
     const unknown = await join(store, friend, "zzzzzzzz");
     assert.ok(unknown.referral);

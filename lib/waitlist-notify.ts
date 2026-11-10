@@ -18,6 +18,8 @@ export type WaitlistRecord = WaitlistSignup & {
   referredByEmail?: string;
   /** Code submitted with the signup, before or after it is resolved. */
   referredByCode?: string;
+  /** Tester signup. Not a stored lead. The team subject is tagged. */
+  test?: boolean;
 };
 
 export type DeliverResult = { ok: true } | { ok: false; status: number; error: string };
@@ -28,7 +30,7 @@ export type SendResult = { ok: true; emailed: true } | { ok: false; error: strin
 /** What the form is allowed to show after a submit. */
 export type WaitlistSubmitResult =
   | { status: "sent" }
-  | { status: "duplicate" }
+  | { status: "duplicate"; existingType?: "customer" | "cleaner" }
   | { status: "error"; error: string };
 
 /**
@@ -64,7 +66,8 @@ function oneLine(value: string): string {
 }
 
 export function waitlistSubject(record: WaitlistRecord): string {
-  return `[Tydlii waitlist] ${record.type} — ${oneLine(record.email)}`;
+  const prefix = record.test ? "[Tydlii waitlist][test]" : "[Tydlii waitlist]";
+  return `${prefix} ${record.type} — ${oneLine(record.email)}`;
 }
 
 /** Plain-text body. One field per line so the inbox is scannable. */
@@ -83,6 +86,7 @@ export function waitlistMessage(record: WaitlistRecord): string {
   if (record.referralCode) lines.push(`referralCode: ${oneLine(record.referralCode)}`);
   if (record.referredByEmail) lines.push(`referredBy: ${oneLine(record.referredByEmail)}`);
   if (record.referredByCode) lines.push(`referredByCode: ${oneLine(record.referredByCode)}`);
+  if (record.test) lines.push("test: yes");
   return lines.join("\n");
 }
 
@@ -225,6 +229,8 @@ type ClaimPayload = {
   ok?: unknown;
   claimed?: unknown;
   duplicate?: unknown;
+  existingType?: unknown;
+  test?: unknown;
   spam?: unknown;
   claimId?: unknown;
   error?: unknown;
@@ -275,7 +281,13 @@ export async function deliverWaitlist(
   }
 
   const claim = await postJson(fetchImpl, "/api/waitlist", input);
-  if (claim.data.duplicate === true && claim.ok) return { status: "duplicate" };
+  if (claim.data.duplicate === true && claim.ok) {
+    const existingType =
+      claim.data.existingType === "customer" || claim.data.existingType === "cleaner"
+        ? claim.data.existingType
+        : undefined;
+    return { status: "duplicate", ...(existingType ? { existingType } : {}) };
+  }
   const claimId = claim.data.claimId;
   if (!claim.ok || claim.data.spam === true || claim.data.claimed !== true || typeof claimId !== "string") {
     const error = typeof claim.data.error === "string" && claim.data.error ? claim.data.error : SAVE_ERROR;
@@ -288,6 +300,7 @@ export async function deliverWaitlist(
     createdAt: new Date().toISOString(),
     source: "tydlii.com",
     ...(referredByCode ? { referredByCode } : {}),
+    ...(claim.data.test === true ? { test: true } : {}),
   };
   const sent = await submitWeb3Forms(record, key, fetchImpl);
   if (!sent.ok) {

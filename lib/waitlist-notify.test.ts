@@ -204,15 +204,41 @@ test("a customer ref code is included on the team email", async () => {
 
 test("a duplicate is not emailed", async () => {
   const { calls, fetchImpl } = mockFetch(async (url) => {
-    if (url === "/api/waitlist") return jsonResponse({ ok: true, duplicate: true });
+    if (url === "/api/waitlist") return jsonResponse({ ok: true, duplicate: true, existingType: "customer" });
     return jsonResponse({ success: true });
   });
   const result = await deliverWaitlist(signup, "test-access-key", fetchImpl);
-  assert.deepEqual(result, { status: "duplicate" });
+  assert.deepEqual(result, { status: "duplicate", existingType: "customer" });
   assert.deepEqual(
     calls.map((call) => call.url),
     ["/api/waitlist"],
   );
+});
+
+test("a tester claim tags the team subject and still sends", async () => {
+  const { calls, fetchImpl } = mockFetch(async (url) => {
+    if (url === "/api/waitlist") return jsonResponse({ ok: true, claimed: true, claimId: "claim-1", test: true });
+    if (url === "/api/waitlist/confirm") return jsonResponse({ ok: true });
+    if (url === WEB3FORMS_ENDPOINT) return jsonResponse({ success: true });
+    return jsonResponse({ ok: false }, 500);
+  });
+  const result = await deliverWaitlist(
+    {
+      ...signup,
+      type: "cleaner",
+      name: "John",
+      email: "josephkocsisan2020@gmail.com",
+      neighbourhoods: ["King West"],
+      quote: null,
+    },
+    "test-access-key",
+    fetchImpl,
+  );
+  assert.deepEqual(result, { status: "sent" });
+  const mailed = JSON.parse(String(calls[1].init?.body)) as Record<string, string>;
+  assert.equal(mailed.subject, "[Tydlii waitlist][test] cleaner — josephkocsisan2020@gmail.com");
+  assert.match(mailed.message, /^test: yes$/m);
+  assert.equal(waitlistSubject({ ...customer, test: true }), "[Tydlii waitlist][test] customer — mina@example.com");
 });
 
 test("Web3Forms failure releases the reserve and is not a success", async () => {
